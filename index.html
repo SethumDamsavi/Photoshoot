@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Birthday Archive | Studio Portrait Session & Memory Book</title>
+  <meta name="description" content="A refined, personal photo monograph and archive celebrating birthday memories, portraits, and candid moments.">
+  
+  <!-- Curated Editorial Typography -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Navigation Bar -->
+  <header class="site-header">
+    <div class="nav-container">
+      <div class="brand-logo" id="brand-logo">
+        <div class="logo-mark" aria-hidden="true">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+            <circle cx="8.5" cy="8.5" r="1.5"/>
+            <polyline points="21 15 16 10 5 21"/>
+          </svg>
+        </div>
+        <div class="logo-text">
+          <span class="logo-title">The Birthday Archive</span>
+          <span class="logo-sub">Studio Portrait Session & Memoir</span>
+        </div>
+      </div>
+
+      <nav class="header-actions">
+        <button id="hero-slideshow-btn" class="nav-btn ghost-nav-btn" title="View Fullscreen Slideshow" aria-label="Start slideshow">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
+            <polygon points="5 3 19 12 5 21 5 3"/>
+          </svg>
+          <span>Slideshow</span>
+        </button>
+
+        <button id="print-nav-btn" class="nav-btn ghost-nav-btn" title="Print Keepsake Memory Book" aria-label="Print memory book">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="6 9 6 2 18 2 18 9"/>
+            <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+            <rect x="6" y="14" width="12" height="8"/>
+          </svg>
+          <span>Print Keepsake</span>
+        </button>
+
+        <button id="open-upload-btn" class="nav-btn primary-nav-btn" aria-label="Add new birthday shoot photos">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+            <circle cx="12" cy="13" r="4"/>
+          </svg>
+          <span>Add Photos</span>
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Hero & Profile Section -->
+  <main class="main-content">
+    <section class="hero-section" id="hero-section">
+      <div class="hero-wrapper">
+        <div class="hero-profile-card">
+          <div class="avatar-frame-container">
+            <div class="avatar-matte">
+              <img id="profile-avatar-img" src="assets/portrait.jpg" alt="Birthday portrait cover photo" class="avatar-image">
+            </div>
+            <button id="change-avatar-btn" class="avatar-edit-badge" title="Change Cover Photo" aria-label="Change cover portrait">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                <circle cx="12" cy="13" r="4"/>
+              </svg>
+              <span>Change Cover</span>
+            </button>
+            <input type="file" id="avatar-file-input" accept="image/*" style="display:none;">
+          </div>
+
+          <div class="profile-details">
+            <div class="profile-meta-top">
+              <span id="display-milestone" class="profile-milestone-text" contenteditable="true" spellcheck="false" title="Click to edit session name">Twenty-Fourth Birthday Session</span>
+              <span class="inline-edit-indicator" title="Editable field" aria-hidden="true">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              </span>
+            </div>
+
+            <h1 class="birthday-girl-name" id="display-name" contenteditable="true" spellcheck="false" title="Click to edit name">
+              Maya's Portrait Monograph
+            </h1>
+
+            <p class="birthday-quote" id="display-quote" contenteditable="true" spellcheck="false" title="Click to edit personal note">
+              “An afternoon in the city, golden light through linen curtains, vintage cake, and the people who make it all feel like home.”
+            </p>
+
+            <div class="hero-metadata-row">
+              <div class="meta-item">
+                <span class="meta-icon" aria-hidden="true">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                    <line x1="16" y1="2" x2="16" y2="6"/>
+                    <line x1="8" y1="2" x2="8" y2="6"/>
+                    <line x1="3" y1="10" x2="21" y2="10"/>
+                  </svg>
+                </span>
+                <span id="display-date" class="meta-text" contenteditable="true" spellcheck="false" title="Click to edit date">October 24, 2026</span>
+              </div>
+
+              <div class="meta-item">
+                <span class="meta-icon" aria-hidden="true">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                    <circle cx="12" cy="10" r="3"/>
+                  </svg>
+                </span>
+                <span id="display-location" class="meta-text" contenteditable="true" spellcheck="false" title="Click to edit location">The Conservatory, Brooklyn</span>
+              </div>
+
+              <div class="meta-item">
+                <span class="meta-icon" aria-hidden="true">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"/>
+                    <path d="m14.31 8 5.74 9.94"/>
+                    <path d="M9.69 8h11.48"/>
+                    <path d="m7.38 12 5.74-9.94"/>
+                    <path d="M9.69 16 3.95 6.06"/>
+                    <path d="M14.31 16H2.83"/>
+                    <path d="m16.62 12-5.74 9.94"/>
+                  </svg>
+                </span>
+                <span id="display-photographer" class="meta-text" contenteditable="true" spellcheck="false" title="Click to edit photographer">Shot by Elena Vance</span>
+              </div>
+            </div>
+
+            <div class="hero-archive-summary">
+              <span id="stat-summary-text" class="summary-line">3 photographs archived • 2 favorites</span>
+              <button id="hero-reset-demo-btn" class="subtle-link-btn" title="Reset sample photos">
+                Reset samples
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Gallery Controls (Search, Categories Filter, View Toggles) -->
+    <section class="gallery-controls-section" id="gallery-controls">
+      <div class="controls-container">
+        <!-- Category Filter Pills -->
+        <div class="categories-scroll-wrapper">
+          <div class="category-tabs" id="category-tabs" role="tablist">
+            <button class="cat-tab active" data-category="all" role="tab" aria-selected="true">
+              All Moments
+            </button>
+            <button class="cat-tab" data-category="favorites" role="tab" aria-selected="false">
+              Favorites
+            </button>
+            <button class="cat-tab" data-category="Portraits" role="tab" aria-selected="false">
+              Portraits
+            </button>
+            <button class="cat-tab" data-category="Cake & Candles" role="tab" aria-selected="false">
+              Cake & Candles
+            </button>
+            <button class="cat-tab" data-category="Golden Hour" role="tab" aria-selected="false">
+              Golden Hour
+            </button>
+            <button class="cat-tab" data-category="Outfits & Looks" role="tab" aria-selected="false">
+              Outfits & Details
+            </button>
+            <button class="cat-tab" data-category="Candid & Friends" role="tab" aria-selected="false">
+              Candids & Friends
+            </button>
+          </div>
+        </div>
+
+        <!-- Search & Sorting Toolbar -->
+        <div class="filter-toolbar">
+          <div class="search-input-box">
+            <span class="search-icon" aria-hidden="true">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"/>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              </svg>
+            </span>
+            <input type="text" id="search-input" placeholder="Search caption, scene, or note..." aria-label="Search photos">
+            <button id="clear-search-btn" class="clear-search-btn" style="display:none;" title="Clear search" aria-label="Clear search">✕</button>
+          </div>
+
+          <div class="toolbar-right">
+            <div class="sort-select-wrapper">
+              <label for="sort-select" class="sr-only">Sort photos by</label>
+              <select id="sort-select" class="custom-select" aria-label="Sort photos">
+                <option value="newest">Newest first</option>
+                <option value="oldest">Oldest first</option>
+                <option value="favorites">Favorites first</option>
+                <option value="title">Alphabetical</option>
+              </select>
+            </div>
+
+            <!-- View Switch (Masonry vs Grid) -->
+            <div class="view-mode-toggle" role="group" aria-label="Gallery view layout">
+              <button id="view-masonry-btn" class="view-btn active" title="Masonry Layout" aria-label="Masonry layout">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M3 3h8v10H3V3zm10 0h8v6h-8V3zM3 15h8v6H3v-6zm10-4h8v10h-8V11z"/>
+                </svg>
+              </button>
+              <button id="view-grid-btn" class="view-btn" title="Uniform Grid Layout" aria-label="Grid layout">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M3 3h8v8H3V3zm10 0h8v8h-8V3zM3 13h8v8H3v-8zm10 0h8v8h-8v-8z"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Main Photo Gallery Grid -->
+    <section class="gallery-display-section" id="gallery-display">
+      <div class="gallery-container">
+        <div id="photos-grid" class="photos-grid masonry-mode" aria-live="polite">
+          <article class="photo-card" id="card-sample-1">
+            <div class="card-media-wrapper" role="button" tabindex="0" aria-label="View Studio Portraits in White in full screen">
+              <div class="card-floating-bar">
+                <span class="card-badge">Portraits</span>
+                <button class="card-fav-btn is-favorite" title="Marked as favorite" aria-label="Favorite toggle">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                </button>
+              </div>
+              <img src="assets/portrait.jpg" alt="Studio Portraits in White" loading="lazy">
+              <div class="card-hover-overlay">
+                <span class="quick-view-badge">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                  <span>Expand</span>
+                </span>
+              </div>
+            </div>
+            <div class="card-content">
+              <div class="card-title-row">
+                <h3 class="card-title">Studio Portraits in White</h3>
+                <span class="card-date">Oct 24, 2026</span>
+              </div>
+              <p class="card-story">Quiet studio portraits right before everyone arrived. The afternoon light through the sheer curtains was hitting the room just right.</p>
+              <div class="card-actions-row">
+                <button class="card-action-btn edit-btn" title="Edit story caption">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                  <span>Edit</span>
+                </button>
+                <button class="card-action-btn delete-btn" title="Delete this photograph">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                  <span>Delete</span>
+                </button>
+              </div>
+            </div>
+          </article>
+          <article class="photo-card" id="card-sample-2">
+            <div class="card-media-wrapper" role="button" tabindex="0" aria-label="View Strawberry Vanilla Cake in full screen">
+              <div class="card-floating-bar">
+                <span class="card-badge">Cake & Candles</span>
+                <button class="card-fav-btn is-favorite" title="Marked as favorite" aria-label="Favorite toggle">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                </button>
+              </div>
+              <img src="assets/cake.jpg" alt="Strawberry Vanilla Cake" loading="lazy">
+              <div class="card-hover-overlay">
+                <span class="quick-view-badge">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                  <span>Expand</span>
+                </span>
+              </div>
+            </div>
+            <div class="card-content">
+              <div class="card-title-row">
+                <h3 class="card-title">Strawberry Vanilla Cake</h3>
+                <span class="card-date">Oct 24, 2026</span>
+              </div>
+              <p class="card-story">Vintage piped cake with fresh strawberries. Took everyone three tries to get the matches to light.</p>
+              <div class="card-actions-row">
+                <button class="card-action-btn edit-btn" title="Edit story caption">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                  <span>Edit</span>
+                </button>
+                <button class="card-action-btn delete-btn" title="Delete this photograph">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                  <span>Delete</span>
+                </button>
+              </div>
+            </div>
+          </article>
+          <article class="photo-card" id="card-sample-3">
+            <div class="card-media-wrapper" role="button" tabindex="0" aria-label="View Golden Hour on the Roof in full screen">
+              <div class="card-floating-bar">
+                <span class="card-badge">Golden Hour</span>
+                <button class="card-fav-btn" title="Mark as favorite" aria-label="Favorite toggle">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                </button>
+              </div>
+              <img src="assets/golden_hour.jpg" alt="Golden Hour on the Roof" loading="lazy">
+              <div class="card-hover-overlay">
+                <span class="quick-view-badge">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                  <span>Expand</span>
+                </span>
+              </div>
+            </div>
+            <div class="card-content">
+              <div class="card-title-row">
+                <h3 class="card-title">Golden Hour on the Roof</h3>
+                <span class="card-date">Oct 24, 2026</span>
+              </div>
+              <p class="card-story">Catching the last 15 minutes of sunlight over Brooklyn right as the evening breeze picked up.</p>
+              <div class="card-actions-row">
+                <button class="card-action-btn edit-btn" title="Edit story caption">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                  <span>Edit</span>
+                </button>
+                <button class="card-action-btn delete-btn" title="Delete this photograph">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                  <span>Delete</span>
+                </button>
+              </div>
+            </div>
+          </article>
+        </div>
+
+        <!-- Empty State Message -->
+        <div id="empty-state" class="empty-state" style="display: none;">
+          <div class="empty-icon-box" aria-hidden="true">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+              <circle cx="8.5" cy="8.5" r="1.5"/>
+              <polyline points="21 15 16 10 5 21"/>
+            </svg>
+          </div>
+          <h2 class="empty-title">No photographs in this collection</h2>
+          <p class="empty-desc">No birthday session photos match your current filter. Add new portraits or clear your search to reveal the collection.</p>
+          <button id="empty-add-btn" class="nav-btn primary-nav-btn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+              <circle cx="12" cy="13" r="4"/>
+            </svg>
+            <span>Add Photos</span>
+          </button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer class="site-footer">
+    <div class="footer-container">
+      <div class="footer-col-left">
+        <span class="footer-brand">The Birthday Archive</span>
+        <p class="footer-text">
+          A personal memory monograph documenting birthday portrait sessions, candids, and celebrations.
+        </p>
+      </div>
+      <div class="footer-links">
+        <button id="export-album-btn" class="footer-action-link">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+          <span>Export JSON Backup</span>
+        </button>
+        <span class="bullet" aria-hidden="true">•</span>
+        <button id="print-album-btn" class="footer-action-link">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+          <span>Print Memory Book</span>
+        </button>
+        <span class="bullet" aria-hidden="true">•</span>
+        <button id="clear-all-btn" class="footer-action-link text-danger">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+          <span>Clear Archive</span>
+        </button>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ================= MODALS ================= -->
+
+  <!-- Add / Upload Photo Modal -->
+  <div id="upload-modal" class="modal-overlay" aria-hidden="true" role="dialog" aria-labelledby="modal-title">
+    <div class="modal-backdrop" id="modal-backdrop"></div>
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-header-titles">
+          <span class="modal-section-label">Session Upload</span>
+          <h2 id="modal-title" class="modal-title">Add Photographs to Archive</h2>
+        </div>
+        <button id="close-upload-modal" class="modal-close-btn" aria-label="Close modal">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+
+      <form id="upload-form" class="upload-form">
+        <!-- Drag and Drop Zone -->
+        <div id="drop-zone" class="drop-zone">
+          <input type="file" id="file-input" accept="image/*" multiple class="file-input-hidden">
+          <div class="drop-zone-content">
+            <div class="drop-zone-icon-box" aria-hidden="true">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="17 8 12 3 7 8"/>
+                <line x1="12" y1="3" x2="12" y2="15"/>
+              </svg>
+            </div>
+            <h3 class="drop-zone-title">Drop your session images here</h3>
+            <p class="drop-zone-sub">or <button type="button" id="browse-btn" class="browse-link">choose files</button> from your device</p>
+            <span class="drop-zone-formats">JPEG, PNG, WEBP — Multiple files supported</span>
+          </div>
+
+          <!-- Preview Thumbnails Container -->
+          <div id="file-preview-strip" class="file-preview-strip" style="display:none;"></div>
+        </div>
+
+        <!-- Web URL Option -->
+        <div class="form-row-or">
+          <span>Or import via image URL</span>
+        </div>
+        <div class="form-group">
+          <label for="image-url-input" class="form-label">Image Web URL</label>
+          <div class="input-with-button">
+            <input type="url" id="image-url-input" class="form-input" placeholder="https://images.example.com/shoot-01.jpg">
+            <button type="button" id="load-url-btn" class="input-inline-btn">Load URL</button>
+          </div>
+        </div>
+
+        <div class="form-grid-2">
+          <!-- Photo Title -->
+          <div class="form-group">
+            <label for="photo-title-input" class="form-label">Photo Title / Scene <span class="required">*</span></label>
+            <input type="text" id="photo-title-input" class="form-input" placeholder="e.g. Studio Portraits in White, Cutting the Cake" required>
+          </div>
+
+          <!-- Scene Category -->
+          <div class="form-group">
+            <label for="photo-category-input" class="form-label">Scene Category</label>
+            <select id="photo-category-input" class="form-input custom-select">
+              <option value="Portraits">Portraits</option>
+              <option value="Cake & Candles">Cake & Candles</option>
+              <option value="Golden Hour">Golden Hour</option>
+              <option value="Outfits & Looks">Outfits & Details</option>
+              <option value="Candid & Friends">Candids & Friends</option>
+              <option value="Other Moments">Other Moments</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-grid-2">
+          <!-- Date Taken -->
+          <div class="form-group">
+            <label for="photo-date-input" class="form-label">Date Taken</label>
+            <input type="date" id="photo-date-input" class="form-input">
+          </div>
+
+          <!-- Favorite Toggle -->
+          <div class="form-group checkbox-group">
+            <label class="form-label">Curation</label>
+            <label class="custom-checkbox-label">
+              <input type="checkbox" id="photo-favorite-input">
+              <span class="checkbox-custom"></span>
+              <span class="checkbox-text">Mark as Favorite Highlight</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Caption / Story -->
+        <div class="form-group">
+          <label for="photo-caption-input" class="form-label">Memory Story / Caption</label>
+          <textarea id="photo-caption-input" class="form-textarea" rows="3" placeholder="Notes on lighting, feelings, or stories behind this photo..."></textarea>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" id="cancel-upload-btn" class="btn btn-secondary">Cancel</button>
+          <button type="submit" id="submit-upload-btn" class="btn btn-primary">
+            <span>Add to Archive</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Fullscreen Lightbox & Slideshow Modal -->
+  <div id="lightbox-modal" class="lightbox-overlay" aria-hidden="true" role="dialog" aria-label="Photo View">
+    <div class="lightbox-backdrop" id="lightbox-backdrop"></div>
+    
+    <div class="lightbox-toolbar">
+      <div class="lightbox-counter" id="lightbox-counter">Photo 1 of 3</div>
+      <div class="lightbox-actions">
+        <button id="lb-favorite-btn" class="lb-tool-btn" title="Toggle Favorite" aria-label="Toggle favorite">
+          <svg class="heart-icon-svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+          </svg>
+        </button>
+        <button id="lb-slideshow-toggle-btn" class="lb-tool-btn" title="Play Slideshow (Spacebar)" aria-label="Toggle slideshow">
+          <svg class="play-icon-svg" width="17" height="17" viewBox="0 0 24 24" fill="currentColor">
+            <polygon points="5 3 19 12 5 21 5 3"/>
+          </svg>
+        </button>
+        <button id="lb-download-btn" class="lb-tool-btn" title="Download High-Res Photograph" aria-label="Download photograph">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+        </button>
+        <button id="lb-close-btn" class="lb-tool-btn close-lb-btn" title="Close Lightbox (Esc)" aria-label="Close lightbox">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Navigation Arrows -->
+    <button id="lb-prev-btn" class="lb-nav-btn lb-prev" aria-label="Previous photograph">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><polyline points="15 18 9 12 15 6"/></svg>
+    </button>
+    <button id="lb-next-btn" class="lb-nav-btn lb-next" aria-label="Next photograph">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><polyline points="9 18 15 12 9 6"/></svg>
+    </button>
+
+    <div class="lightbox-stage">
+      <div class="lightbox-media-wrapper">
+        <img id="lightbox-image" src="" alt="Expanded birthday photograph" class="lightbox-img">
+      </div>
+      
+      <div class="lightbox-info-drawer">
+        <div class="lb-info-header">
+          <span id="lb-category-badge" class="badge-pill">Portraits</span>
+          <span id="lb-date-text" class="lb-date-text">Oct 24, 2026</span>
+        </div>
+        <h2 id="lb-title" class="lb-title">Studio Portrait in White</h2>
+        <p id="lb-caption" class="lb-caption">Quiet studio portraits right before everyone arrived.</p>
+        <div class="lb-manage-row">
+          <button id="lb-edit-btn" class="lb-sub-btn">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            <span>Edit Details</span>
+          </button>
+          <button id="lb-delete-btn" class="lb-sub-btn text-danger">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            <span>Delete</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="toast-notification" aria-live="polite">
+    <span id="toast-message" class="toast-message">Photo added to archive</span>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
