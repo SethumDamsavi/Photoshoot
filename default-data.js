@@ -1,0 +1,170 @@
+export const defaultCategories = [
+  {
+    "id": "portraits",
+    "name": "Portraits",
+    "slug": "portraits"
+  },
+  {
+    "id": "golden-hour",
+    "name": "Golden Hour",
+    "slug": "golden-hour"
+  },
+  {
+    "id": "cake-wishes",
+    "name": "Cake & Wishes",
+    "slug": "cake-wishes"
+  },
+  {
+    "id": "candid-moments",
+    "name": "Candid Moments",
+    "slug": "candid-moments"
+  }
+];
+
+export const defaultProducts = [
+  {
+    "id": 1,
+    "name": "Chapter 21: The 21st Milestone Portrait",
+    "category": "Portraits",
+    "categorySlug": "portraits",
+    "date": "October 9, 2026",
+    "location": "Lumière Atelier Studio",
+    "image": "assets/portrait.jpg",
+    "shortDescription": "Commemorating her 21st milestone with timeless elegance against soft rose and ivory tones.",
+    "description": "A radiant 21st birthday milestone portrait celebrating grace, ambition, and youthful elegance. Bathed in soft ambient light with blooming peony tones, capturing her genuine smile as she enters Chapter 21.",
+    "featured": true,
+    "published": true,
+    "attributes": [
+      {
+        "name": "Camera",
+        "terms": [{ "name": "Sony Alpha A7 IV" }]
+      },
+      {
+        "name": "Lens",
+        "terms": [{ "name": "85mm f/1.4 GM" }]
+      },
+      {
+        "name": "Lighting",
+        "terms": [{ "name": "Profoto Softbox & Ambient Glow" }]
+      },
+      {
+        "name": "Mood",
+        "terms": [{ "name": "Editorial, Serene, Graceful" }]
+      }
+    ],
+    "createdAt": "2026-10-09T10:00:00.000Z"
+  },
+  {
+    "id": 2,
+    "name": "Twenty-One Wishes & Peony Cake",
+    "category": "Cake & Wishes",
+    "categorySlug": "cake-wishes",
+    "date": "October 9, 2026",
+    "location": "The Glasshouse Conservatory",
+    "image": "assets/cake.jpg",
+    "shortDescription": "A handcrafted tiered birthday cake adorned with blush peonies, delicate pearls, and 21 golden wishes.",
+    "description": "Making twenty-one heartfelt wishes: a custom tiered rose-water birthday cake dressed in silky pink buttercream, fresh garden petals, and glowing candlelight marking her 21st birthday milestone.",
+    "featured": true,
+    "published": true,
+    "attributes": [
+      {
+        "name": "Camera",
+        "terms": [{ "name": "Canon EOS R5" }]
+      },
+      {
+        "name": "Lens",
+        "terms": [{ "name": "50mm f/1.2L USM" }]
+      },
+      {
+        "name": "Lighting",
+        "terms": [{ "name": "Natural Window Light + Candlelight" }]
+      },
+      {
+        "name": "Mood",
+        "terms": [{ "name": "Festive, Sweet, Romantic" }]
+      }
+    ],
+    "createdAt": "2026-10-09T11:30:00.000Z"
+  },
+  {
+    "id": 3,
+    "name": "Golden Hour Glow: Stepping into 21",
+    "category": "Golden Hour",
+    "categorySlug": "golden-hour",
+    "date": "October 9, 2026",
+    "location": "Rosewood Botanical Gardens",
+    "image": "assets/golden_hour.jpg",
+    "shortDescription": "Sun-drenched golden hour portrait celebrating her vibrant spirit at twenty-one.",
+    "description": "Basking in the golden afternoon warmth on her 21st birthday. The setting sun paints a dreamy halo of light around her, capturing carefree elegance and the joy of stepping into womanhood.",
+    "featured": true,
+    "published": true,
+    "attributes": [
+      {
+        "name": "Camera",
+        "terms": [{ "name": "Sony Alpha A7 IV" }]
+      },
+      {
+        "name": "Lens",
+        "terms": [{ "name": "35mm f/1.4 GM" }]
+      },
+      {
+        "name": "Lighting",
+        "terms": [{ "name": "Direct Golden Hour Sunlight" }]
+      },
+      {
+        "name": "Mood",
+        "terms": [{ "name": "Warm, Dreamy, Luminous" }]
+      }
+    ],
+    "createdAt": "2026-10-09T17:45:00.000Z"
+  },
+  {
+    "id": 4,
+    "name": "Shoreline Joy & Birthday Breeze",
+    "category": "Candid Moments",
+    "categorySlug": "candid-moments",
+    "date": "October 9, 2026",
+    "location": "Sunset Beach Shore",
+    "image": "assets/beach_candid_shore.jpg",
+    "shortDescription": "Spontaneous laughter and barefoot ocean breeze celebrating twenty-one unforgettable years.",
+    "description": "Pure youthful joy on her 21st birthday. Walking along the sunlit waves with a radiant smile, feeling the cool ocean spray and celebrating life's most beautiful milestone chapter.",
+    "featured": false,
+    "published": true,
+    "attributes": [
+      {
+        "name": "Camera",
+        "terms": [{ "name": "Sony Alpha A7 IV" }]
+      },
+      {
+        "name": "Lens",
+        "terms": [{ "name": "24-70mm f/2.8 GM II" }]
+      },
+      {
+        "name": "Lighting",
+        "terms": [{ "name": "Ambient Sunset Horizon" }]
+      },
+      {
+        "name": "Mood",
+        "terms": [{ "name": "Joyful, Spontaneous, Authentic" }]
+      }
+    ],
+    "createdAt": "2026-10-09T18:15:00.000Z"
+  }
+];
+
+export const defaultUsers = [
+  {
+    "username": "admin",
+    "passwordHash": "admin123",
+    "salt": "birthday_salt_secure_2026",
+    "role": "administrator",
+    "name": "Administrator"
+  },
+  {
+    "username": "Raveesha",
+    "passwordHash": "7f7e94e63f5c2d4ccfda51c5f907a4552b54d71cefe2d2d1264c23fe70c5f088",
+    "salt": "birthday_salt_secure_2026",
+    "role": "administrator",
+    "name": "Raveesha"
+  }
+];

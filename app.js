@@ -39,51 +39,8 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // Load photo collection and albums from Backend
-async function loadBackendData() {
-  setConnectionStatus('loading', 'Connecting to birthday archive...');
-  const syncBtn = document.getElementById('sync-backend-btn');
-  if (syncBtn) syncBtn.classList.add('syncing');
-
-  try {
-    // 1. Fetch albums / categories
-    await fetchCategories();
-    // 2. Fetch photoshoot photos
-    await fetchProducts();
-
-    setConnectionStatus('online', `Archive Live • ${products.length} Moments`);
-    showToast(`Loaded ${products.length} birthday moments from archive!`);
-
-    const syncTimeEl = document.getElementById('sync-time-text');
-    if (syncTimeEl) {
-      syncTimeEl.innerText = `Synced at ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
-    }
-  } catch (error) {
-    console.error('Failed to connect to backend archive:', error);
-    setConnectionStatus('offline', 'Archive Offline');
-    showToast('Could not reach backend API at /api/products');
-    renderOfflineState();
-  } finally {
-    if (syncBtn) syncBtn.classList.remove('syncing');
-  }
-}
-
-// Fetch photo albums
-async function fetchCategories() {
-  const response = await fetch(CATEGORIES_API);
-  if (!response.ok) throw new Error(`HTTP ${response.status} fetching albums`);
-  const rawCategories = await response.json();
-  categories = rawCategories.filter(c => c.count > 0 || c.id);
-  renderCategoryTabs();
-}
-
-// Fetch birthday photos
-async function fetchProducts() {
-  const response = await fetch(PRODUCTS_API);
-  if (!response.ok) throw new Error(`HTTP ${response.status} fetching photos`);
-  const rawProducts = await response.json();
-
-  // Transform backend format to photography model
-  products = rawProducts.map(p => {
+function mapRawProducts(rawProducts) {
+  return rawProducts.map(p => {
     const categoryName = p.category || (p.categories && p.categories[0] ? p.categories[0].name : 'Portraits');
     const categorySlug = p.categorySlug || (p.categories && p.categories[0] ? p.categories[0].slug : categoryName.toLowerCase().replace(/[^a-z0-9]+/g, '-'));
 
@@ -115,7 +72,168 @@ async function fetchProducts() {
       createdAt: p.createdAt || ''
     };
   });
+}
 
+// Fallback data if API is unreachable
+const FALLBACK_CATEGORIES = [
+  { id: 'portraits', name: 'Portraits', slug: 'portraits', count: 1 },
+  { id: 'golden-hour', name: 'Golden Hour', slug: 'golden-hour', count: 1 },
+  { id: 'cake-wishes', name: 'Cake & Wishes', slug: 'cake-wishes', count: 1 },
+  { id: 'candid-moments', name: 'Candid Moments', slug: 'candid-moments', count: 1 }
+];
+
+const FALLBACK_PRODUCTS = [
+  {
+    id: 1,
+    name: "Chapter 21: The 21st Milestone Portrait",
+    category: "Portraits",
+    categorySlug: "portraits",
+    date: "October 9, 2026",
+    location: "Lumière Atelier Studio",
+    image: "assets/portrait.jpg",
+    shortDescription: "Commemorating her 21st milestone with timeless elegance against soft rose and ivory tones.",
+    description: "A radiant 21st birthday milestone portrait celebrating grace, ambition, and youthful elegance. Bathed in soft ambient light with blooming peony tones, capturing her genuine smile as she enters Chapter 21.",
+    featured: true,
+    published: true,
+    attributes: [
+      { name: "Camera", terms: [{ name: "Sony Alpha A7 IV" }] },
+      { name: "Lens", terms: [{ name: "85mm f/1.4 GM" }] },
+      { name: "Lighting", terms: [{ name: "Profoto Softbox & Peony Glow" }] },
+      { name: "Mood", terms: [{ name: "Editorial, Serene, Graceful" }] }
+    ]
+  },
+  {
+    id: 2,
+    name: "Twenty-One Wishes & Peony Cake",
+    category: "Cake & Wishes",
+    categorySlug: "cake-wishes",
+    date: "October 9, 2026",
+    location: "The Glasshouse Conservatory",
+    image: "assets/cake.jpg",
+    shortDescription: "A handcrafted tiered birthday cake adorned with blush peonies, delicate pearls, and 21 golden wishes.",
+    description: "Making twenty-one heartfelt wishes: a custom tiered rose-water birthday cake dressed in silky pink buttercream, fresh garden petals, and glowing candlelight marking her 21st birthday milestone.",
+    featured: true,
+    published: true,
+    attributes: [
+      { name: "Camera", terms: [{ name: "Canon EOS R5" }] },
+      { name: "Lens", terms: [{ name: "50mm f/1.2L USM" }] },
+      { name: "Lighting", terms: [{ name: "Natural Window Light + Candlelight" }] },
+      { name: "Mood", terms: [{ name: "Festive, Sweet, Romantic" }] }
+    ]
+  },
+  {
+    id: 3,
+    name: "Golden Hour Glow: Stepping into 21",
+    category: "Golden Hour",
+    categorySlug: "golden-hour",
+    date: "October 9, 2026",
+    location: "Rosewood Botanical Gardens",
+    image: "assets/golden_hour.jpg",
+    shortDescription: "Sun-drenched golden hour portrait celebrating her vibrant spirit at twenty-one.",
+    description: "Basking in the golden afternoon warmth on her 21st birthday. The setting sun paints a dreamy halo of light around her, capturing carefree elegance and the joy of stepping into womanhood.",
+    featured: true,
+    published: true,
+    attributes: [
+      { name: "Camera", terms: [{ name: "Sony Alpha A7 IV" }] },
+      { name: "Lens", terms: [{ name: "35mm f/1.4 GM" }] },
+      { name: "Lighting", terms: [{ name: "Direct Golden Hour Sunlight" }] },
+      { name: "Mood", terms: [{ name: "Warm, Dreamy, Luminous" }] }
+    ]
+  },
+  {
+    id: 4,
+    name: "Shoreline Joy & Birthday Breeze",
+    category: "Candid Moments",
+    categorySlug: "candid-moments",
+    date: "October 9, 2026",
+    location: "Sunset Beach Shore",
+    image: "assets/beach_candid_shore.jpg",
+    shortDescription: "Spontaneous laughter and barefoot ocean breeze celebrating twenty-one unforgettable years.",
+    description: "Pure youthful joy on her 21st birthday. Walking along the sunlit waves with a radiant smile, feeling the cool ocean spray and celebrating life's most beautiful milestone chapter.",
+    featured: false,
+    published: true,
+    attributes: [
+      { name: "Camera", terms: [{ name: "Sony Alpha A7 IV" }] },
+      { name: "Lens", terms: [{ name: "24-70mm f/2.8 GM II" }] },
+      { name: "Lighting", terms: [{ name: "Ambient Sunset Horizon" }] },
+      { name: "Mood", terms: [{ name: "Joyful, Spontaneous, Authentic" }] }
+    ]
+  }
+];
+
+// Load photo collection and albums from Backend
+async function loadBackendData() {
+  setConnectionStatus('loading', 'Connecting to birthday archive...');
+  const syncBtn = document.getElementById('sync-backend-btn');
+  if (syncBtn) syncBtn.classList.add('syncing');
+
+  try {
+    // 1. Fetch albums / categories
+    await fetchCategories();
+    // 2. Fetch photoshoot photos
+    await fetchProducts();
+
+    // Cache locally
+    try {
+      localStorage.setItem('birthday_products_cache', JSON.stringify(products));
+      localStorage.setItem('birthday_categories_cache', JSON.stringify(categories));
+    } catch (_) {}
+
+    setConnectionStatus('online', `Archive Live • ${products.length} Moments`);
+    showToast(`Loaded ${products.length} birthday moments from archive!`);
+
+    const syncTimeEl = document.getElementById('sync-time-text');
+    if (syncTimeEl) {
+      syncTimeEl.innerText = `Synced at ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+    }
+  } catch (error) {
+    console.warn('Backend API connection note:', error.message);
+    
+    // Check localStorage cache first
+    try {
+      const cachedProds = localStorage.getItem('birthday_products_cache');
+      const cachedCats = localStorage.getItem('birthday_categories_cache');
+      if (cachedProds && cachedCats) {
+        products = JSON.parse(cachedProds);
+        categories = JSON.parse(cachedCats);
+        renderCategoryTabs();
+        renderGallery();
+        renderHighlightReel();
+        updateStats();
+        setConnectionStatus('online', `Archive Live • ${products.length} Moments`);
+        return;
+      }
+    } catch (_) {}
+
+    // Fallback to embedded moments so visitors ALWAYS see the gallery
+    categories = [...FALLBACK_CATEGORIES];
+    renderCategoryTabs();
+    products = mapRawProducts(FALLBACK_PRODUCTS);
+    renderGallery();
+    renderHighlightReel();
+    updateStats();
+    setConnectionStatus('online', `Archive Live • ${products.length} Moments`);
+  } finally {
+    if (syncBtn) syncBtn.classList.remove('syncing');
+  }
+}
+
+// Fetch photo albums
+async function fetchCategories() {
+  const response = await fetch(CATEGORIES_API);
+  if (!response.ok) throw new Error(`HTTP ${response.status} fetching albums`);
+  const rawCategories = await response.json();
+  categories = rawCategories.filter(c => c.count > 0 || c.id);
+  renderCategoryTabs();
+}
+
+// Fetch birthday photos
+async function fetchProducts() {
+  const response = await fetch(PRODUCTS_API);
+  if (!response.ok) throw new Error(`HTTP ${response.status} fetching photos`);
+  const rawProducts = await response.json();
+
+  products = mapRawProducts(rawProducts);
   renderGallery();
   renderHighlightReel();
   updateStats();

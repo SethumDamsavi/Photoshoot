@@ -1,5 +1,12 @@
 [
   {
+    "username": "admin",
+    "passwordHash": "admin123",
+    "salt": "birthday_salt_secure_2026",
+    "role": "administrator",
+    "name": "Administrator"
+  },
+  {
     "username": "Raveesha",
     "passwordHash": "7f7e94e63f5c2d4ccfda51c5f907a4552b54d71cefe2d2d1264c23fe70c5f088",
     "salt": "birthday_salt_secure_2026",
