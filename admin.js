@@ -1,0 +1,813 @@
+/**
+ * Admin Studio Client - Birthday Shoot Photo Archive
+ * Handles Authentication, Photo Uploads & Curation, Album Management.
+ * Zero Pricing - Dedicated to Photography & Milestone Memories.
+ */
+
+// State
+let authToken = localStorage.getItem('admin_token') || '';
+let currentUser = null;
+let allProducts = [];
+let allCategories = [];
+
+// DOM References
+const loginSection = document.getElementById('login-section');
+const dashboardSection = document.getElementById('dashboard-section');
+const loginForm = document.getElementById('login-form');
+const loginUsernameInput = document.getElementById('login-username');
+const loginPasswordInput = document.getElementById('login-password');
+const togglePasswordBtn = document.getElementById('toggle-password-btn');
+const loginErrorAlert = document.getElementById('login-error');
+const currentUserNameEl = document.getElementById('current-user-name');
+const logoutBtn = document.getElementById('logout-btn');
+
+// Stats
+const statProductsCount = document.getElementById('stat-products-count');
+const statCategoriesCount = document.getElementById('stat-categories-count');
+const statFeaturedCount = document.getElementById('stat-featured-count');
+const statLocationsCount = document.getElementById('stat-locations-count');
+
+// Table & Toolbar
+const productsTableBody = document.getElementById('products-table-body');
+const searchInput = document.getElementById('admin-search-input');
+const categoryFilter = document.getElementById('admin-category-filter');
+const sortFilter = document.getElementById('admin-sort-filter');
+const openAddProductBtn = document.getElementById('open-add-product-btn');
+const openCategoryModalBtn = document.getElementById('open-category-modal-btn');
+
+// Photo Modal
+const productModal = document.getElementById('product-modal');
+const productModalBackdrop = document.getElementById('product-modal-backdrop');
+const closeProductModalBtn = document.getElementById('close-product-modal');
+const cancelProductModalBtn = document.getElementById('cancel-product-modal-btn');
+const productModalTitle = document.getElementById('product-modal-title');
+const productForm = document.getElementById('product-form');
+const productEditId = document.getElementById('product-edit-id');
+const prodNameInput = document.getElementById('prod-name');
+const prodCategoryInput = document.getElementById('prod-category');
+const categoriesDatalist = document.getElementById('categories-datalist');
+const prodDateInput = document.getElementById('prod-date');
+const prodLocationInput = document.getElementById('prod-location');
+const prodPublishedCheckbox = document.getElementById('prod-published');
+const prodFeaturedCheckbox = document.getElementById('prod-featured');
+const prodShortDescInput = document.getElementById('prod-short-desc');
+const prodDescInput = document.getElementById('prod-desc');
+const prodImageUrlInput = document.getElementById('prod-image-url');
+const prodFileInput = document.getElementById('prod-file-input');
+const adminDropZone = document.getElementById('admin-drop-zone');
+const imagePreviewImg = document.getElementById('image-preview-img');
+const addAttributeBtn = document.getElementById('add-attribute-btn');
+const attributesList = document.getElementById('attributes-list');
+
+// Category Modal
+const categoryModal = document.getElementById('category-modal');
+const categoryModalBackdrop = document.getElementById('category-modal-backdrop');
+const closeCategoryModalBtn = document.getElementById('close-category-modal');
+const addCategoryForm = document.getElementById('add-category-form');
+const newCategoryNameInput = document.getElementById('new-category-name');
+const categoryListBody = document.getElementById('category-list-body');
+
+// Toast
+const toast = document.getElementById('toast');
+const toastMessage = document.getElementById('toast-message');
+let toastTimer = null;
+
+// ================= INITIALIZATION =================
+document.addEventListener('DOMContentLoaded', () => {
+  setupEventListeners();
+  checkAuthSession();
+});
+
+// Toast notification helper
+function showToast(msg) {
+  if (!toast || !toastMessage) return;
+  toastMessage.textContent = msg;
+  toast.classList.add('active');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => {
+    toast.classList.remove('active');
+  }, 3200);
+}
+
+// Authenticated fetch wrapper
+async function apiRequest(endpoint, options = {}) {
+  const headers = {
+    'Content-Type': 'application/json',
+    ...(options.headers || {})
+  };
+  if (authToken) {
+    headers['Authorization'] = `Bearer ${authToken}`;
+  }
+
+  const res = await fetch(endpoint, {
+    ...options,
+    headers
+  });
+
+  if (res.status === 401 && !endpoint.includes('/api/auth/login')) {
+    handleLogout();
+    throw new Error('Session expired. Please log in again.');
+  }
+
+  return res;
+}
+
+// Check session on startup
+async function checkAuthSession() {
+  if (!authToken) {
+    showLoginView();
+    return;
+  }
+
+  try {
+    const res = await apiRequest('/api/auth/me');
+    if (res.ok) {
+      const data = await res.json();
+      currentUser = data.user;
+      showDashboardView();
+      loadDashboardData();
+    } else {
+      showLoginView();
+    }
+  } catch (_) {
+    showLoginView();
+  }
+}
+
+function showLoginView() {
+  loginSection.style.display = 'flex';
+  dashboardSection.style.display = 'none';
+}
+
+function showDashboardView() {
+  loginSection.style.display = 'none';
+  dashboardSection.style.display = 'flex';
+  if (currentUserNameEl && currentUser) {
+    currentUserNameEl.textContent = currentUser.name || currentUser.username;
+  }
+}
+
+// ================= EVENT LISTENERS =================
+function setupEventListeners() {
+  // Password Visibility Toggle with Clean SVGs
+  const EYE_SHOW_SVG = `<svg class="password-eye-svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>`;
+  const EYE_HIDE_SVG = `<svg class="password-eye-svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>`;
+
+  if (togglePasswordBtn && loginPasswordInput) {
+    togglePasswordBtn.addEventListener('click', () => {
+      const isPassword = loginPasswordInput.type === 'password';
+      loginPasswordInput.type = isPassword ? 'text' : 'password';
+      togglePasswordBtn.innerHTML = isPassword ? EYE_HIDE_SVG : EYE_SHOW_SVG;
+      togglePasswordBtn.setAttribute('title', isPassword ? 'Hide password' : 'Show password');
+      togglePasswordBtn.setAttribute('aria-label', isPassword ? 'Hide password' : 'Show password');
+    });
+  }
+
+  // Login Form Submission
+  if (loginForm) {
+    loginForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      loginErrorAlert.style.display = 'none';
+      const username = loginUsernameInput.value.trim();
+      const password = loginPasswordInput.value.trim();
+
+      const submitBtn = document.getElementById('login-submit-btn');
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span>Verifying...</span>';
+      }
+
+      try {
+        const res = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password })
+        });
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+          authToken = data.token;
+          currentUser = data.user;
+          localStorage.setItem('admin_token', authToken);
+          showToast(`Welcome back, ${currentUser.name || currentUser.username}!`);
+          showDashboardView();
+          loadDashboardData();
+        } else {
+          loginErrorAlert.textContent = data.error || 'Authentication failed. Please check credentials.';
+          loginErrorAlert.style.display = 'block';
+        }
+      } catch (err) {
+        loginErrorAlert.textContent = 'Server connection failed. Make sure backend is running.';
+        loginErrorAlert.style.display = 'block';
+      } finally {
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = '<span>Sign In to Studio</span>';
+        }
+      }
+    });
+  }
+
+  // Logout
+  if (logoutBtn) {
+    logoutBtn.addEventListener('click', handleLogout);
+  }
+
+  // Search & Filtering
+  let searchTimeout = null;
+  if (searchInput) {
+    searchInput.addEventListener('input', () => {
+      clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(fetchProducts, 250);
+    });
+  }
+
+  if (categoryFilter) {
+    categoryFilter.addEventListener('change', fetchProducts);
+  }
+
+  if (sortFilter) {
+    sortFilter.addEventListener('change', fetchProducts);
+  }
+
+  // Modal Open/Close Controls
+  if (openAddProductBtn) {
+    openAddProductBtn.addEventListener('click', openAddProductModal);
+  }
+
+  if (closeProductModalBtn) {
+    closeProductModalBtn.addEventListener('click', closeProductModal);
+  }
+
+  if (cancelProductModalBtn) {
+    cancelProductModalBtn.addEventListener('click', closeProductModal);
+  }
+
+  if (productModalBackdrop) {
+    productModalBackdrop.addEventListener('click', closeProductModal);
+  }
+
+  // Category Modal Controls
+  if (openCategoryModalBtn) {
+    openCategoryModalBtn.addEventListener('click', openCategoryModal);
+  }
+
+  if (closeCategoryModalBtn) {
+    closeCategoryModalBtn.addEventListener('click', closeCategoryModal);
+  }
+
+  if (categoryModalBackdrop) {
+    categoryModalBackdrop.addEventListener('click', closeCategoryModal);
+  }
+
+  if (addCategoryForm) {
+    addCategoryForm.addEventListener('submit', handleAddCategory);
+  }
+
+  // Esc key close modals
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      closeProductModal();
+      closeCategoryModal();
+    }
+  });
+
+  // Photo Form Submission
+  if (productForm) {
+    productForm.addEventListener('submit', handleProductFormSubmit);
+  }
+
+  // Dynamic Attribute Button
+  if (addAttributeBtn) {
+    addAttributeBtn.addEventListener('click', () => addAttributeRow('', ''));
+  }
+
+  // Image Upload Handling
+  setupImageUploader();
+}
+
+function handleLogout() {
+  if (authToken) {
+    fetch('/api/auth/logout', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${authToken}` }
+    }).catch(() => {});
+  }
+  authToken = '';
+  currentUser = null;
+  localStorage.removeItem('admin_token');
+  showLoginView();
+  showToast('Logged out securely.');
+}
+
+// ================= DATA LOADING =================
+async function loadDashboardData() {
+  await fetchCategories();
+  await fetchProducts();
+}
+
+async function fetchCategories() {
+  try {
+    const res = await apiRequest('/api/categories');
+    if (!res.ok) throw new Error('Failed to fetch albums');
+    allCategories = await res.json();
+
+    // Populate Datalist
+    if (categoriesDatalist) {
+      categoriesDatalist.innerHTML = allCategories
+        .map(c => `<option value="${escapeHtml(c.name)}">`)
+        .join('');
+    }
+
+    // Populate Category Filter dropdown
+    if (categoryFilter) {
+      const currentSelected = categoryFilter.value;
+      categoryFilter.innerHTML = '<option value="all">All Albums</option>' +
+        allCategories.map(c => `<option value="${escapeHtml(c.slug)}">${escapeHtml(c.name)} (${c.count || 0})</option>`).join('');
+      categoryFilter.value = currentSelected || 'all';
+    }
+
+    // Update Category Stat
+    if (statCategoriesCount) {
+      statCategoriesCount.textContent = allCategories.length;
+    }
+
+    renderCategoryModalList();
+  } catch (err) {
+    console.error('Error loading albums:', err);
+  }
+}
+
+async function fetchProducts() {
+  const searchVal = searchInput ? searchInput.value.trim() : '';
+  const catVal = categoryFilter ? categoryFilter.value : 'all';
+  const sortVal = sortFilter ? sortFilter.value : 'newest';
+
+  const params = new URLSearchParams();
+  if (searchVal) params.set('search', searchVal);
+  if (catVal && catVal !== 'all') params.set('category', catVal);
+  if (sortVal) params.set('sort', sortVal);
+
+  if (productsTableBody) {
+    productsTableBody.innerHTML = `
+      <tr>
+        <td colspan="6" class="table-loading">Loading photo collection...</td>
+      </tr>
+    `;
+  }
+
+  try {
+    const res = await apiRequest(`/api/products?${params.toString()}`);
+    if (!res.ok) throw new Error('Failed to fetch photos');
+    allProducts = await res.json();
+    renderProductsTable(allProducts);
+    updateDashboardStats(allProducts);
+  } catch (err) {
+    console.error('Error loading photos:', err);
+    if (productsTableBody) {
+      productsTableBody.innerHTML = `
+        <tr>
+          <td colspan="6" class="table-loading" style="color: #be123c;">
+            Failed to load photos. ${escapeHtml(err.message)}
+          </td>
+        </tr>
+      `;
+    }
+  }
+}
+
+function updateDashboardStats(prods) {
+  if (statProductsCount) statProductsCount.textContent = prods.length;
+
+  const featured = prods.filter(p => p.featured).length;
+  if (statFeaturedCount) statFeaturedCount.textContent = featured;
+
+  const uniqueLocations = new Set(prods.map(p => p.location).filter(Boolean));
+  if (statLocationsCount) {
+    statLocationsCount.textContent = Math.max(uniqueLocations.size, 1);
+  }
+}
+
+// ================= TABLE RENDERING =================
+function renderProductsTable(prods) {
+  if (!productsTableBody) return;
+
+  if (prods.length === 0) {
+    productsTableBody.innerHTML = `
+      <tr>
+        <td colspan="6" class="table-loading">
+          No photos found. Click <strong>"Upload / Add Photo"</strong> to add memorable shots!
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  productsTableBody.innerHTML = prods.map(prod => {
+    const imgSrc = prod.image || (prod.images && prod.images[0] ? prod.images[0].src : 'assets/portrait.jpg');
+    const isFeatured = Boolean(prod.featured);
+    const isPublished = prod.published !== false;
+    const dateStr = prod.date || 'October 9, 2026';
+    const locationStr = prod.location || 'Birthday Shoot';
+
+    return `
+      <tr data-id="${prod.id}">
+        <td>
+          <img src="${escapeHtml(imgSrc)}" alt="${escapeHtml(prod.name)}" class="table-thumb" onerror="this.src='assets/portrait.jpg'">
+        </td>
+        <td>
+          <div class="product-cell-details">
+            <span class="product-cell-name">${escapeHtml(prod.name)}</span>
+            ${prod.shortDescription ? `<span class="product-cell-desc">${escapeHtml(prod.shortDescription)}</span>` : ''}
+          </div>
+        </td>
+        <td>
+          <span class="badge-category">${escapeHtml(prod.category || 'Portraits')}</span>
+        </td>
+        <td>
+          <div style="display: flex; flex-direction: column; gap: 0.15rem;">
+            <span style="font-weight: 500; font-size: 0.85rem;">${escapeHtml(dateStr)}</span>
+            <span style="font-size: 0.775rem; color: var(--ink-muted);">${escapeHtml(locationStr)}</span>
+          </div>
+        </td>
+        <td>
+          <div style="display: flex; flex-direction: column; gap: 0.25rem;">
+            <span class="status-badge ${isPublished ? 'in-stock' : 'out-of-stock'}">
+              ● ${isPublished ? 'Published' : 'Archived'}
+            </span>
+            ${isFeatured ? '<span class="status-badge on-sale">★ Featured Cover</span>' : ''}
+          </div>
+        </td>
+        <td style="text-align: right;">
+          <div class="row-actions">
+            <button class="action-btn-icon edit-prod-btn" data-id="${prod.id}" title="Edit Photo">
+              ✏️
+            </button>
+            <button class="action-btn-icon delete-btn delete-prod-btn" data-id="${prod.id}" title="Delete Photo">
+              🗑️
+            </button>
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join('');
+
+  // Attach row event listeners
+  productsTableBody.querySelectorAll('.edit-prod-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = parseInt(btn.dataset.id, 10);
+      openEditProductModal(id);
+    });
+  });
+
+  productsTableBody.querySelectorAll('.delete-prod-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = parseInt(btn.dataset.id, 10);
+      handleDeleteProduct(id);
+    });
+  });
+}
+
+// ================= ADD / EDIT PHOTO MODAL =================
+function openAddProductModal() {
+  productForm.reset();
+  productEditId.value = '';
+  productModalTitle.textContent = 'Upload Birthday Photo';
+  imagePreviewImg.src = 'assets/portrait.jpg';
+  prodImageUrlInput.value = 'assets/portrait.jpg';
+  prodDateInput.value = 'October 9, 2026';
+  prodLocationInput.value = 'Rosewood Botanical Gardens';
+  prodPublishedCheckbox.checked = true;
+  prodFeaturedCheckbox.checked = false;
+  attributesList.innerHTML = '';
+
+  // Default photography metadata
+  addAttributeRow('Camera', 'Sony Alpha A7 IV');
+  addAttributeRow('Lens', '85mm f/1.4 GM');
+  addAttributeRow('Lighting', 'Natural Golden Hour');
+  addAttributeRow('Mood', 'Joyful, Serene, Warm');
+
+  productModal.classList.add('open');
+  productModal.setAttribute('aria-hidden', 'false');
+  prodNameInput.focus();
+}
+
+function openEditProductModal(id) {
+  const prod = allProducts.find(p => p.id === id);
+  if (!prod) return;
+
+  productForm.reset();
+  productEditId.value = prod.id;
+  productModalTitle.textContent = 'Edit Birthday Photo';
+
+  prodNameInput.value = prod.name || '';
+  prodCategoryInput.value = prod.category || 'Portraits';
+  prodDateInput.value = prod.date || 'October 9, 2026';
+  prodLocationInput.value = prod.location || '';
+  prodPublishedCheckbox.checked = prod.published !== false;
+  prodFeaturedCheckbox.checked = Boolean(prod.featured);
+  prodShortDescInput.value = prod.shortDescription || '';
+  prodDescInput.value = prod.description || '';
+
+  const imgSrc = prod.image || (prod.images && prod.images[0] ? prod.images[0].src : 'assets/portrait.jpg');
+  prodImageUrlInput.value = imgSrc;
+  imagePreviewImg.src = imgSrc;
+
+  // Attributes / Shot Details
+  attributesList.innerHTML = '';
+  if (Array.isArray(prod.attributes) && prod.attributes.length > 0) {
+    prod.attributes.forEach(attr => {
+      const val = attr.terms && attr.terms[0] ? attr.terms[0].name : (attr.value || '');
+      addAttributeRow(attr.name || '', val);
+    });
+  } else {
+    addAttributeRow('Camera', 'Sony Alpha A7 IV');
+    addAttributeRow('Lens', '85mm f/1.4 GM');
+  }
+
+  productModal.classList.add('open');
+  productModal.setAttribute('aria-hidden', 'false');
+  prodNameInput.focus();
+}
+
+function closeProductModal() {
+  productModal.classList.remove('open');
+  productModal.setAttribute('aria-hidden', 'true');
+}
+
+function addAttributeRow(name = '', value = '') {
+  const row = document.createElement('div');
+  row.className = 'attr-row';
+  row.innerHTML = `
+    <input type="text" class="form-input attr-key" placeholder="Field (e.g. Camera, Lens, Mood)" value="${escapeHtml(name)}">
+    <input type="text" class="form-input attr-val" placeholder="Value (e.g. 85mm f/1.4, Golden Hour)" value="${escapeHtml(value)}">
+    <button type="button" class="attr-delete-btn" title="Remove detail row">✕</button>
+  `;
+
+  row.querySelector('.attr-delete-btn').addEventListener('click', () => {
+    row.remove();
+  });
+
+  attributesList.appendChild(row);
+}
+
+async function handleProductFormSubmit(e) {
+  e.preventDefault();
+
+  const id = productEditId.value ? parseInt(productEditId.value, 10) : null;
+  const isEditing = Boolean(id);
+
+  // Collect attributes
+  const attributes = [];
+  attributesList.querySelectorAll('.attr-row').forEach(row => {
+    const key = row.querySelector('.attr-key').value.trim();
+    const val = row.querySelector('.attr-val').value.trim();
+    if (key && val) {
+      attributes.push({
+        id: key.toLowerCase().replace(/[^a-z0-9]/g, '_'),
+        name: key,
+        terms: [{ name: val }]
+      });
+    }
+  });
+
+  const payload = {
+    name: prodNameInput.value.trim(),
+    category: prodCategoryInput.value.trim() || 'Portraits',
+    date: prodDateInput.value.trim() || 'October 9, 2026',
+    location: prodLocationInput.value.trim() || 'Birthday Shoot',
+    image: prodImageUrlInput.value.trim() || 'assets/portrait.jpg',
+    shortDescription: prodShortDescInput.value.trim(),
+    description: prodDescInput.value.trim(),
+    featured: prodFeaturedCheckbox.checked,
+    published: prodPublishedCheckbox.checked,
+    attributes
+  };
+
+  const saveBtn = document.getElementById('save-product-btn');
+  if (saveBtn) {
+    saveBtn.disabled = true;
+    saveBtn.innerHTML = '<span>Saving Photo...</span>';
+  }
+
+  try {
+    const endpoint = isEditing ? `/api/products/${id}` : '/api/products';
+    const method = isEditing ? 'PUT' : 'POST';
+
+    const res = await apiRequest(endpoint, {
+      method,
+      body: JSON.stringify(payload)
+    });
+
+    const data = await res.json();
+    if (res.ok && data.success) {
+      showToast(isEditing ? 'Photo updated successfully!' : 'New photo added to archive!');
+      closeProductModal();
+      await loadDashboardData();
+    } else {
+      alert(`Error saving photo: ${data.error || 'Unknown error'}`);
+    }
+  } catch (err) {
+    alert(`Request error: ${err.message}`);
+  } finally {
+    if (saveBtn) {
+      saveBtn.disabled = false;
+      saveBtn.innerHTML = '<span>Save Photo to Archive</span>';
+    }
+  }
+}
+
+async function handleDeleteProduct(id) {
+  const prod = allProducts.find(p => p.id === id);
+  const name = prod ? prod.name : `Photo #${id}`;
+
+  if (!confirm(`Are you sure you want to remove "${name}" from the birthday archive?\nThis action cannot be undone.`)) {
+    return;
+  }
+
+  try {
+    const res = await apiRequest(`/api/products/${id}`, { method: 'DELETE' });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      showToast(`Removed "${name}".`);
+      await loadDashboardData();
+    } else {
+      alert(`Failed to delete: ${data.error || 'Unknown error'}`);
+    }
+  } catch (err) {
+    alert(`Delete error: ${err.message}`);
+  }
+}
+
+// ================= IMAGE UPLOADER =================
+function setupImageUploader() {
+  if (prodImageUrlInput && imagePreviewImg) {
+    prodImageUrlInput.addEventListener('input', () => {
+      const url = prodImageUrlInput.value.trim();
+      imagePreviewImg.src = url || 'assets/portrait.jpg';
+    });
+  }
+
+  if (adminDropZone && prodFileInput) {
+    adminDropZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      adminDropZone.classList.add('dragover');
+    });
+
+    adminDropZone.addEventListener('dragleave', () => {
+      adminDropZone.classList.remove('dragover');
+    });
+
+    adminDropZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      adminDropZone.classList.remove('dragover');
+      if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+        uploadImageFile(e.dataTransfer.files[0]);
+      }
+    });
+
+    prodFileInput.addEventListener('change', () => {
+      if (prodFileInput.files && prodFileInput.files[0]) {
+        uploadImageFile(prodFileInput.files[0]);
+      }
+    });
+  }
+}
+
+function uploadImageFile(file) {
+  if (!file.type.startsWith('image/')) {
+    alert('Please upload an image file (PNG, JPG, WEBP).');
+    return;
+  }
+
+  showToast(`Uploading ${file.name}...`);
+  const reader = new FileReader();
+
+  reader.onload = async (e) => {
+    const dataUrl = e.target.result;
+    if (imagePreviewImg) imagePreviewImg.src = dataUrl;
+
+    try {
+      const res = await apiRequest('/api/upload', {
+        method: 'POST',
+        body: JSON.stringify({
+          dataUrl,
+          filename: file.name
+        })
+      });
+
+      const data = await res.json();
+      if (res.ok && data.success) {
+        prodImageUrlInput.value = data.url;
+        imagePreviewImg.src = data.url;
+        showToast('Photo uploaded and saved to archive!');
+      } else {
+        alert(`Upload error: ${data.error || 'Server error'}`);
+      }
+    } catch (err) {
+      alert(`Upload request failed: ${err.message}`);
+    }
+  };
+
+  reader.readAsDataURL(file);
+}
+
+// ================= ALBUMS / CATEGORIES MODAL =================
+function openCategoryModal() {
+  categoryModal.classList.add('open');
+  categoryModal.setAttribute('aria-hidden', 'false');
+  renderCategoryModalList();
+  if (newCategoryNameInput) {
+    newCategoryNameInput.value = '';
+    newCategoryNameInput.focus();
+  }
+}
+
+function closeCategoryModal() {
+  categoryModal.classList.remove('open');
+  categoryModal.setAttribute('aria-hidden', 'true');
+}
+
+function renderCategoryModalList() {
+  if (!categoryListBody) return;
+
+  if (allCategories.length === 0) {
+    categoryListBody.innerHTML = '<div style="padding: 1rem; color: #916f7c; text-align: center;">No photo albums found.</div>';
+    return;
+  }
+
+  categoryListBody.innerHTML = allCategories.map(cat => {
+    return `
+      <div class="category-item-row">
+        <div class="cat-item-info">
+          <strong>${escapeHtml(cat.name)}</strong>
+          <span class="cat-badge-count">${cat.count || 0} photos</span>
+        </div>
+        <button class="action-btn-icon delete-btn delete-cat-btn" data-id="${cat.id || cat.slug}" title="Delete Album">
+          🗑️
+        </button>
+      </div>
+    `;
+  }).join('');
+
+  categoryListBody.querySelectorAll('.delete-cat-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.id;
+      handleDeleteCategory(id);
+    });
+  });
+}
+
+async function handleAddCategory(e) {
+  e.preventDefault();
+  const name = newCategoryNameInput.value.trim();
+  if (!name) return;
+
+  try {
+    const res = await apiRequest('/api/categories', {
+      method: 'POST',
+      body: JSON.stringify({ name })
+    });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      showToast(`Added album "${name}".`);
+      newCategoryNameInput.value = '';
+      await fetchCategories();
+    } else {
+      alert(`Error: ${data.error || 'Could not add album'}`);
+    }
+  } catch (err) {
+    alert(`Request error: ${err.message}`);
+  }
+}
+
+async function handleDeleteCategory(id) {
+  if (!confirm(`Delete album "${id}"? Photos in this album will remain intact.`)) {
+    return;
+  }
+
+  try {
+    const res = await apiRequest(`/api/categories/${id}`, { method: 'DELETE' });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      showToast('Album deleted.');
+      await fetchCategories();
+      await fetchProducts();
+    } else {
+      alert(`Delete error: ${data.error || 'Failed'}`);
+    }
+  } catch (err) {
+    alert(`Delete error: ${err.message}`);
+  }
+}
+
+// Utility: HTML Escaper
+function escapeHtml(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}

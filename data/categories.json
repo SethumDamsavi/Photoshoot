@@ -1,0 +1,22 @@
+[
+  {
+    "id": "portraits",
+    "name": "Portraits",
+    "slug": "portraits"
+  },
+  {
+    "id": "golden-hour",
+    "name": "Golden Hour",
+    "slug": "golden-hour"
+  },
+  {
+    "id": "cake-wishes",
+    "name": "Cake & Wishes",
+    "slug": "cake-wishes"
+  },
+  {
+    "id": "candid-moments",
+    "name": "Candid Moments",
+    "slug": "candid-moments"
+  }
+]

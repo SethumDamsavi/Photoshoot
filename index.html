@@ -1,150 +1,145 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>e-Globe Catalog | Connected to WordPress Backend</title>
-  <meta name="description" content="Live product showcase connected directly to WooCommerce & WordPress backend at localhost:10004.">
-  
-  <!-- Curated Editorial Typography -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Raveesha's 21st Birthday Celebration | Chapter 21 Photo Monograph</title>
+  <meta name="description"
+    content="An authentic celebration monograph preserving Raveesha's 21st birthday photoshoot in blush pink, soft white, and fresh garden roses.">
+
+  <!-- Curated Editorial Typography: Cormorant Garamond, Cinzel, Alex Brush, Caveat, Plus Jakarta Sans -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  
+  <link
+    href="https://fonts.googleapis.com/css2?family=Alex+Brush&family=Caveat:wght@500;600;700&family=Cinzel:wght@400;500;600;700&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap"
+    rel="stylesheet">
+
   <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
-  <!-- Navigation Bar -->
-  <header class="site-header">
+
+  <!-- Botanical Watercolor Rose Page Corners (Exact Top Corners of Screen) -->
+  <div class="page-rose-corner corner-top-left" aria-hidden="true">
+    <img src="assets/rose_corner_left.png?v=4" alt="Watercolor pink rose corner arrangement" class="rose-corner-img">
+  </div>
+  <div class="page-rose-corner corner-top-right" aria-hidden="true">
+    <img src="assets/rose_corner_right.png?v=4" alt="Watercolor pink rose corner arrangement" class="rose-corner-img">
+  </div>
+
+  <!-- Luxury Frosted Floating Site Header -->
+  <header class="site-header" id="site-header">
     <div class="nav-container">
-      <div class="brand-logo" id="brand-logo">
-        <div class="logo-mark" aria-hidden="true">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
-            <line x1="3" y1="6" x2="21" y2="6"/>
-            <path d="M16 10a4 4 0 0 1-8 0"/>
-          </svg>
-        </div>
-        <div class="logo-text">
-          <span class="logo-title">e-Globe Showcase</span>
-          <span class="logo-sub">WordPress Backend Integration</span>
+      <div class="nav-floating-bar">
+        <!-- Navigation Links -->
+        <nav class="nav-links" aria-label="Main Navigation">
+          <a href="#hero-section" class="nav-link">Monograph</a>
+          <a href="#gallery-controls" class="nav-link">Photo Gallery</a>
+        </nav>
+
+        <!-- Right: Circular Login Button -->
+        <div class="nav-actions">
+          <a href="/admin" class="nav-login-btn nav-login-circle-btn" id="nav-login-btn" title="Login" aria-label="Login">
+            <svg class="nav-login-user-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+              <circle cx="12" cy="7" r="4"/>
+            </svg>
+          </a>
         </div>
       </div>
-
-      <!-- Backend Connection Status Pill -->
-      <div class="backend-status-pill" id="backend-status-pill" title="Backend endpoint: http://localhost:10004/wp-json/wc/store/products">
-        <span class="status-indicator-dot online" id="status-dot"></span>
-        <span class="status-label" id="status-label">WordPress Backend: Connected</span>
-      </div>
-
-      <nav class="header-actions">
-        <button id="sync-backend-btn" class="nav-btn ghost-nav-btn" title="Sync live products from WordPress backend" aria-label="Sync products">
-          <svg class="sync-icon-svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
-          </svg>
-          <span>Sync Backend</span>
-        </button>
-
-        <a href="http://localhost:10004/wp-admin/" target="_blank" rel="noopener noreferrer" class="nav-btn ghost-nav-btn" title="Open WordPress Admin to add or edit products">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
-            <polyline points="15 3 21 3 21 9"/>
-            <line x1="10" y1="14" x2="21" y2="3"/>
-          </svg>
-          <span>WP Admin</span>
-        </a>
-
-        <a href="http://localhost:10004/cart/" target="_blank" rel="noopener noreferrer" class="nav-btn primary-nav-btn" title="View WooCommerce Cart">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="9" cy="21" r="1"/>
-            <circle cx="20" cy="21" r="1"/>
-            <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
-          </svg>
-          <span>View Cart</span>
-        </a>
-      </nav>
     </div>
   </header>
 
-  <!-- Hero & Catalog Profile Section -->
+  <!-- Editorial Photoshoot Hero Section (Humanized Real Photography Focus) -->
   <main class="main-content">
     <section class="hero-section" id="hero-section">
       <div class="hero-wrapper">
-        <div class="hero-profile-card">
-          <div class="avatar-frame-container">
-            <div class="avatar-matte">
-              <img id="profile-avatar-img" src="assets/portrait.jpg" alt="Catalog feature preview" class="avatar-image">
+        <div class="hero-editorial-grid">
+          <!-- Left: Narrative & Typography Column -->
+          <div class="hero-narrative-col">
+            <!-- Grand Display Title with Pink & White Typography -->
+            <h1 class="hero-display-title">
+              <span class="title-main-line">Raveesha's <span class="title-serif-italic">21st Birthday
+                  Shoot</span></span>
+              <span class="title-sub-milestone">A Living Celebration in Pink &amp; White</span>
+            </h1>
+
+            <div class="hero-invitation-divider" aria-hidden="true">
+              <span class="divider-line"></span>
+              <span class="divider-rose-flourish">❦</span>
+              <span class="divider-line"></span>
+            </div>
+
+            <!-- Authentic Curator Note -->
+            <p class="hero-curator-statement">
+              A tribute to Chapter 21. Preserving the joy, beauty, and unforgettable memories of Raveesha's 21st birthday — from sun-drenched golden hours and seaside laughter to candlelit birthday wishes and fresh French garden roses.
+            </p>
+
+
+            <!-- Action & Navigation Row -->
+            <div class="hero-cta-group">
+              <a href="#gallery-controls" class="btn btn-primary hero-explore-btn">
+                <span>Explore Photo Gallery</span>
+              </a>
             </div>
           </div>
 
-          <div class="profile-details">
-            <div class="profile-meta-top">
-              <span class="profile-milestone-text">Live WooCommerce Catalog</span>
-              <span class="backend-chip">REST API v1</span>
-            </div>
+          <!-- Right: Real Photography Editorial Composition -->
+          <div class="hero-visual-col">
+            <div class="hero-photo-composition">
+              <!-- Primary Arch Portrait Frame (Real Image) -->
+              <div class="gallery-arch-card" id="hero-cover-frame" role="button" tabindex="0"
+                aria-label="View cover portrait in lightbox">
+                <div class="arch-inner-window">
+                  <img id="profile-avatar-img" src="assets/portrait.jpg" alt="Editorial 21st birthday portrait"
+                    class="hero-arch-img">
+                </div>
 
-            <h1 class="birthday-girl-name" id="catalog-title">
-              e-Globe Tech & Computer Catalog
-            </h1>
-
-            <p class="birthday-quote" id="catalog-subtitle">
-              “Directly connected to WordPress backend at localhost:10004. Products, pricing, stock levels, and specifications are dynamically loaded in real-time.”
-            </p>
-
-            <div class="hero-metadata-row">
-              <div class="meta-item">
-                <span class="meta-icon" aria-hidden="true">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
-                    <rect x="2" y="2" width="20" height="8" rx="2" ry="2"/>
-                    <rect x="2" y="14" width="20" height="8" rx="2" ry="2"/>
-                    <line x1="6" y1="6" x2="6.01" y2="6"/>
-                    <line x1="6" y1="18" x2="6.01" y2="18"/>
-                  </svg>
-                </span>
-                <span class="meta-text">Server: localhost:10004</span>
+                <!-- Editorial Plaque Below Arch -->
+                <div class="arch-caption-plaque">
+                  <div class="arch-plaque-title">
+                    <span class="arch-chapter-badge">Chapter 21</span>
+                    <span class="arch-flourish">❦</span>
+                    <span class="arch-milestone-text">Milestone Portrait</span>
+                  </div>
+                  <div class="arch-plaque-meta">
+                    <span class="arch-meta-name">Raveesha</span>
+                    <span class="arch-meta-dot">•</span>
+                    <span class="arch-meta-date">October 2026</span>
+                  </div>
+                </div>
               </div>
-
-              <div class="meta-item">
-                <span class="meta-icon" aria-hidden="true">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
-                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
-                  </svg>
-                </span>
-                <span class="meta-text">Engine: WordPress 7.1 + WooCommerce</span>
-              </div>
-
-              <div class="meta-item">
-                <span class="meta-icon" aria-hidden="true">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
-                    <circle cx="12" cy="12" r="10"/>
-                    <polyline points="12 6 12 12 16 14"/>
-                  </svg>
-                </span>
-                <span id="sync-time-text" class="meta-text">Synced just now</span>
-              </div>
-            </div>
-
-            <div class="hero-archive-summary">
-              <span id="stat-summary-text" class="summary-line">Loading backend products...</span>
-              <button id="force-reload-btn" class="subtle-link-btn" title="Reload products from backend">
-                Refresh live products
-              </button>
             </div>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- Gallery Controls (Search, Categories Filter, View Toggles) -->
+    <!-- Gallery Controls & Curated Photography Scrapbook Collection -->
     <section class="gallery-controls-section" id="gallery-controls">
       <div class="controls-container">
-        <!-- Category Filter Pills (Dynamically populated from WooCommerce categories) -->
+        <!-- Curated Editorial Header -->
+        <div class="gallery-editorial-header">
+          <h2 class="gallery-display-title">
+            <span class="gallery-title-serif">Chapter 21</span>
+            <span class="gallery-title-script">Moments</span>
+          </h2>
+          <div class="gallery-title-divider" aria-hidden="true">
+            <span class="divider-line"></span>
+            <span class="divider-rose-flourish">❦</span>
+            <span class="divider-line"></span>
+          </div>
+          <p class="gallery-curation-text">A curated collection of portraits, golden hour smiles, and milestone moments celebrating Raveesha's 21st birthday.</p>
+        </div>
+
+        <!-- Album Filter Tabs -->
         <div class="categories-scroll-wrapper">
           <div class="category-tabs" id="category-tabs" role="tablist">
             <button class="cat-tab active" data-category="all" role="tab" aria-selected="true">
-              All Products
+              All Moments
             </button>
-            <!-- Populated dynamically via JS from WordPress Backend -->
+            <!-- Populated dynamically via JS from Backend -->
           </div>
         </div>
 
@@ -152,37 +147,39 @@
         <div class="filter-toolbar">
           <div class="search-input-box">
             <span class="search-icon" aria-hidden="true">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="11" cy="11" r="8"/>
-                <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"
+                stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8" />
+                <line x1="21" y1="21" x2="16.65" y2="16.65" />
               </svg>
             </span>
-            <input type="text" id="search-input" placeholder="Search product name, SKU, or specs..." aria-label="Search products">
-            <button id="clear-search-btn" class="clear-search-btn" style="display:none;" title="Clear search" aria-label="Clear search">✕</button>
+            <input type="text" id="search-input" placeholder="Search memories, locations, or shot details..."
+              aria-label="Search photos">
+            <button id="clear-search-btn" class="clear-search-btn" style="display:none;" title="Clear search"
+              aria-label="Clear search">✕</button>
           </div>
 
           <div class="toolbar-right">
             <div class="sort-select-wrapper">
-              <label for="sort-select" class="sr-only">Sort products by</label>
-              <select id="sort-select" class="custom-select" aria-label="Sort products">
-                <option value="newest">Newest first</option>
-                <option value="price-asc">Price: Low to High</option>
-                <option value="price-desc">Price: High to Low</option>
-                <option value="sale">On Sale first</option>
+              <label for="sort-select" class="sr-only">Sort photos by</label>
+              <select id="sort-select" class="custom-select" aria-label="Sort photos">
+                <option value="newest">Newest Moments</option>
+                <option value="featured">Featured First</option>
                 <option value="title">Alphabetical (A-Z)</option>
+                <option value="oldest">Earliest First</option>
               </select>
             </div>
 
             <!-- View Switch (Masonry vs Grid) -->
-            <div class="view-mode-toggle" role="group" aria-label="Catalog view layout">
-              <button id="view-masonry-btn" class="view-btn active" title="Masonry Layout" aria-label="Masonry layout">
+            <div class="view-mode-toggle" role="group" aria-label="Gallery view layout">
+              <button id="view-masonry-btn" class="view-btn" title="Masonry Layout" aria-label="Masonry layout">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M3 3h8v10H3V3zm10 0h8v6h-8V3zM3 15h8v6H3v-6zm10-4h8v10h-8V11z"/>
+                  <path d="M3 3h8v10H3V3zm10 0h8v6h-8V3zM3 15h8v6H3v-6zm10-4h8v10h-8V11z" />
                 </svg>
               </button>
-              <button id="view-grid-btn" class="view-btn" title="Uniform Grid Layout" aria-label="Grid layout">
+              <button id="view-grid-btn" class="view-btn active" title="Uniform Grid Layout" aria-label="Grid layout">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M3 3h8v8H3V3zm10 0h8v8h-8V3zM3 13h8v8H3v-8zm10 0h8v8h-8v-8z"/>
+                  <path d="M3 3h8v8H3V3zm10 0h8v8h-8V3zM3 13h8v8H3v-8zm10 0h8v8h-8v-8z" />
                 </svg>
               </button>
             </div>
@@ -191,14 +188,25 @@
       </div>
     </section>
 
-    <!-- Main Products Grid -->
+    <!-- Main Photos Grid -->
     <section class="gallery-display-section" id="gallery-display">
       <div class="gallery-container">
-        <!-- Products Grid (Dynamically rendered from WordPress Backend) -->
-        <div id="photos-grid" class="photos-grid masonry-mode" aria-live="polite">
+        <!-- Photos Grid (Dynamically rendered from Backend) -->
+        <div id="photos-grid" class="photos-grid uniform-grid-mode" aria-live="polite">
           <div class="loading-state-card">
             <div class="loading-spinner"></div>
-            <p>Fetching products from WordPress backend (localhost:10004)...</p>
+            <p>Fetching memories from birthday archive...</p>
+          </div>
+        </div>
+
+        <!-- Aesthetic Scrapbook Footer Ribbon -->
+        <div class="scrapbook-footer-motto-banner" aria-hidden="true">
+          <div class="motto-ribbon-card">
+            <span class="motto-item"><span class="motto-heart">♥</span> CHAPTER 21</span>
+            <span class="motto-sep">•</span>
+            <span class="motto-item"><span class="motto-heart">♥</span> RADIANT &amp; BRIGHT</span>
+            <span class="motto-sep">•</span>
+            <span class="motto-item"><span class="motto-heart">♥</span> FOREVER CHERISHED</span>
           </div>
         </div>
 
@@ -206,19 +214,91 @@
         <div id="empty-state" class="empty-state" style="display: none;">
           <div class="empty-icon-box" aria-hidden="true">
             <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-              <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
-              <line x1="3" y1="6" x2="21" y2="6"/>
+              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+              <circle cx="12" cy="13" r="4" />
             </svg>
           </div>
-          <h2 class="empty-title">No products found</h2>
-          <p class="empty-desc">No products match your current category or search filter. Add products in your WordPress admin or reset your search filter.</p>
-          <a href="http://localhost:10004/wp-admin/post-new.php?post_type=product" target="_blank" rel="noopener noreferrer" class="nav-btn primary-nav-btn">
+          <h2 class="empty-title">No moments found</h2>
+          <p class="empty-desc">No photos match your current album or search filter. Upload photos in Studio Admin or
+            reset your search filter.</p>
+          <a href="/admin" class="nav-btn primary-nav-btn">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
-              <line x1="12" y1="5" x2="12" y2="19"/>
-              <line x1="5" y1="12" x2="19" y2="12"/>
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
             </svg>
-            <span>Add Product in WP Admin</span>
+            <span>Upload Photos in Studio Admin</span>
           </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- Personal Milestone Story & 5-Photo Highlight Reel (Matching Reference Section) -->
+    <section class="story-celebration-section" id="story-celebration">
+      <div class="story-celebration-card">
+        <div class="story-celebration-grid">
+          <!-- Left: Personal Story Narrative -->
+          <div class="story-narrative-col">
+            <h2 class="story-heading">Hi, I'm Raveesha</h2>
+            <div class="story-heart-emblem" aria-hidden="true">♥</div>
+            <p class="story-body-text">
+              Stepping into 21 surrounded by love, golden sunlight, and sweet celebration. This photoshoot captures the laughter, the elegance, and the wonderful memories of entering adulthood and celebrating this milestone chapter. Thank you for celebrating with me!
+            </p>
+            <div class="story-handwritten-note">
+              <span>Thanks for celebrating Chapter 21 with me!</span>
+            </div>
+            <div class="story-btn-row">
+              <a href="#gallery-controls" class="story-read-btn">EXPLORE 21ST GALLERY</a>
+            </div>
+          </div>
+
+          <!-- Right: Tilted Polaroid with Botanical Watercolor Spray -->
+          <div class="story-visual-col">
+            <div class="story-polaroid-wrapper">
+              <!-- Watercolor floral spray behind the photo frame -->
+              <div class="story-floral-backdrop" aria-hidden="true">
+                <img src="assets/rose_corner_watercolor.png" alt="Watercolor floral arrangement"
+                  class="story-floral-img">
+              </div>
+
+              <!-- Tilted Polaroid Frame -->
+              <div class="story-polaroid-frame" role="button" tabindex="0"
+                aria-label="View 21st celebration portrait in lightbox" onclick="openLightbox(0)">
+                <div class="story-polaroid-inner">
+                  <img src="assets/portrait.jpg" alt="Raveesha 21st birthday portrait" class="story-polaroid-photo">
+                </div>
+                <!-- Golden Paperclip Accent -->
+                <div class="story-gold-paperclip" aria-hidden="true">
+                  <svg width="24" height="34" viewBox="0 0 24 34" fill="none">
+                    <path
+                      d="M12 4 C8 4 5 7 5 11 L5 25 C5 29 8 32 12 32 C16 32 19 29 19 25 L19 9 C19 6.5 16.5 4.5 13.5 4.5 C10.5 4.5 8 6.5 8 9 L8 23"
+                      stroke="#dfa658" stroke-width="2.2" stroke-linecap="round" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 5-Photo Full-Bleed Highlight Reel (Matching Reference Photo Strip) -->
+      <div id="story-photo-reel-strip" class="story-photo-reel-strip" aria-label="Celebration Highlights Photo Strip">
+        <div class="reel-item" role="button" tabindex="0" onclick="openLightbox(2)"
+          aria-label="View golden hour birthday sunset portrait">
+          <img src="assets/golden_hour.jpg" alt="Golden hour 21st birthday portrait" class="reel-photo">
+        </div>
+        <div class="reel-item" role="button" tabindex="0" onclick="openLightbox(3)" aria-label="View fresh pink and white celebration roses">
+          <img src="assets/pink_white_roses.jpg" alt="Pink and white celebration garden roses" class="reel-photo">
+        </div>
+        <div class="reel-item" role="button" tabindex="0" onclick="openLightbox(1)"
+          aria-label="View shoreline birthday stroll">
+          <img src="assets/beach_candid_shore.jpg" alt="Shoreline birthday candid stroll" class="reel-photo">
+        </div>
+        <div class="reel-item" role="button" tabindex="0" onclick="openLightbox(4)" aria-label="View 21st birthday cake and wishes">
+          <img src="assets/cake.jpg" alt="21st birthday cake with floral blooms" class="reel-photo">
+        </div>
+        <div class="reel-item" role="button" tabindex="0" onclick="openLightbox(0)"
+          aria-label="View seaside 21st birthday celebration sunset">
+          <img src="assets/beach_birthday_27.jpg" alt="Seaside 21st birthday celebration sunset" class="reel-photo">
         </div>
       </div>
     </section>
@@ -228,89 +308,148 @@
   <footer class="site-footer">
     <div class="footer-container">
       <div class="footer-col-left">
-        <span class="footer-brand">e-Globe Backend Catalog</span>
+        <span class="footer-brand">
+          <img src="assets/beach_roses_heels.jpg" alt="Rose thumb" class="footer-thumb-inline">
+          The 21st Birthday Archive
+        </span>
         <p class="footer-text">
-          Frontend interface dynamically connected to LocalWP WordPress & WooCommerce backend. Zero hardcoded products on the frontend.
+          An authentic editorial monograph celebrating Raveesha's 21st birthday photoshoot. Every smile, sunset glow, and milestone moment preserved in timeless blush pink and white.
         </p>
       </div>
       <div class="footer-links">
-        <a href="http://localhost:10004/wp-admin/" target="_blank" rel="noopener noreferrer" class="footer-action-link">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-          <span>WordPress Admin</span>
+        <a href="/admin" class="nav-btn primary-nav-btn footer-admin-btn"
+          title="Open Login to upload and curate photos">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
+            <polyline points="10 17 15 12 10 7" />
+            <line x1="15" y1="12" x2="3" y2="12" />
+          </svg>
+          <span>Login</span>
         </a>
-        <span class="bullet" aria-hidden="true">•</span>
-        <a href="http://localhost:10004/shop/" target="_blank" rel="noopener noreferrer" class="footer-action-link">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
-          <span>Store Shop Page</span>
-        </a>
-        <span class="bullet" aria-hidden="true">•</span>
-        <button id="export-album-btn" class="footer-action-link">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-          <span>Export Catalog JSON</span>
-        </button>
       </div>
     </div>
   </footer>
 
-  <!-- Product Detail Lightbox Modal -->
-  <div id="lightbox-modal" class="lightbox-overlay" aria-hidden="true" role="dialog" aria-label="Product Details">
+  <!-- Photo Detail Lightbox Modal -->
+  <div id="lightbox-modal" class="lightbox-overlay" aria-hidden="true" role="dialog" aria-modal="true"
+    aria-label="Photo Details">
     <div class="lightbox-backdrop" id="lightbox-backdrop"></div>
-    
-    <div class="lightbox-toolbar">
-      <div class="lightbox-counter" id="lightbox-counter">Product 1 of 8</div>
+
+    <!-- Top Floating Toolbar -->
+    <header class="lightbox-toolbar">
+      <div class="lightbox-counter-pill" id="lightbox-counter">Moment 1 of 6</div>
       <div class="lightbox-actions">
-        <button id="lb-favorite-btn" class="lb-tool-btn" title="Toggle Bookmark" aria-label="Bookmark product">
-          <svg class="heart-icon-svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
-            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+        <!-- Toggle Info / Cinema Mode -->
+        <button id="lb-cinema-btn" class="lb-tool-btn" title="Toggle Details & Cinema View (I)"
+          aria-label="Toggle details drawer">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+            <line x1="15" y1="3" x2="15" y2="21" />
           </svg>
         </button>
-        <button id="lb-close-btn" class="lb-tool-btn close-lb-btn" title="Close (Esc)" aria-label="Close modal">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        <!-- Share moment -->
+        <button id="lb-share-btn" class="lb-tool-btn" title="Share Moment Link" aria-label="Share photo">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <circle cx="18" cy="5" r="3" />
+            <circle cx="6" cy="12" r="3" />
+            <circle cx="18" cy="19" r="3" />
+            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
+            <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+          </svg>
+        </button>
+        <!-- Favorite heart -->
+        <button id="lb-favorite-btn" class="lb-tool-btn" title="Toggle Favorite (F)" aria-label="Favorite photo">
+          <svg class="heart-icon-svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="1.8">
+            <path
+              d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+          </svg>
+        </button>
+        <!-- Close (Esc) -->
+        <button id="lb-close-btn" class="lb-tool-btn close-lb-btn" title="Close Lightbox (Esc)"
+          aria-label="Close modal">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
         </button>
       </div>
-    </div>
+    </header>
 
-    <!-- Navigation Arrows -->
-    <button id="lb-prev-btn" class="lb-nav-btn lb-prev" aria-label="Previous product">
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><polyline points="15 18 9 12 15 6"/></svg>
-    </button>
-    <button id="lb-next-btn" class="lb-nav-btn lb-next" aria-label="Next product">
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><polyline points="9 18 15 12 9 6"/></svg>
-    </button>
+    <!-- Lightbox Main Stage (Split View Desktop, Mobile Bottom-Sheet) -->
+    <div class="lightbox-stage" id="lightbox-stage">
+      <!-- Media Viewport -->
+      <div class="lightbox-media-wrapper" id="lightbox-media-wrapper">
+        <div class="lightbox-img-container" id="lightbox-img-container">
+          <button id="lb-prev-btn" class="lb-nav-btn lb-prev" aria-label="Previous photo (Left Arrow)">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="15 18 9 12 15 6" />
+            </svg>
+          </button>
 
-    <div class="lightbox-stage">
-      <div class="lightbox-media-wrapper">
-        <img id="lightbox-image" src="" alt="Product photo" class="lightbox-img">
-      </div>
-      
-      <div class="lightbox-info-drawer">
-        <div class="lb-info-header">
-          <span id="lb-category-badge" class="badge-pill">Laptops</span>
-          <span id="lb-stock-badge" class="badge-pill stock-pill">In Stock</span>
-          <span id="lb-sku-text" class="lb-date-text">SKU: --</span>
-        </div>
-        <h2 id="lb-title" class="lb-title">Product Name</h2>
-        <div id="lb-price" class="lb-price-tag">රු 0.00</div>
-        <div id="lb-caption" class="lb-caption">Product description...</div>
-        
-        <!-- Specifications / Attributes from Backend -->
-        <div id="lb-attributes-container" class="lb-attributes-grid"></div>
+          <img id="lightbox-image" src="" alt="Birthday photoshoot photograph" class="lightbox-img">
 
-        <div class="lb-manage-row">
-          <a id="lb-store-link" href="#" target="_blank" rel="noopener noreferrer" class="btn btn-primary lb-cart-btn">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
-            <span>View & Order on Store</span>
-          </a>
+          <button id="lb-next-btn" class="lb-nav-btn lb-next" aria-label="Next photo (Right Arrow)">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="9 18 15 12 9 6" />
+            </svg>
+          </button>
         </div>
       </div>
+
+      <!-- Monograph & Shot Details Drawer / Sidebar -->
+      <aside class="lightbox-info-drawer" id="lightbox-info-drawer" aria-label="Photo Details">
+        <div class="lb-sheet-handle" id="lb-sheet-handle" aria-hidden="true" title="Swipe or tap to toggle details">
+        </div>
+
+        <div class="lb-drawer-content">
+          <div class="lb-info-header">
+            <span id="lb-category-badge" class="badge-pill">Golden Hour</span>
+            <span class="lb-date-wrap">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                <line x1="16" y1="2" x2="16" y2="6" />
+                <line x1="8" y1="2" x2="8" y2="6" />
+                <line x1="3" y1="10" x2="21" y2="10" />
+              </svg>
+              <span id="lb-date-text" class="lb-date-text">October 9, 2026</span>
+            </span>
+          </div>
+
+          <h2 id="lb-title" class="lb-title">Moment Title</h2>
+
+          <div class="lb-location-row">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+              <circle cx="12" cy="10" r="3" />
+            </svg>
+            <span id="lb-location-text" class="lb-location-sub">Rosewood Coastline</span>
+          </div>
+
+          <div class="lb-divider"></div>
+
+          <!-- Drawer Action Pills -->
+          <div class="lb-quick-actions">
+            <button id="lb-drawer-fav-btn" class="lb-quick-btn" title="Toggle Favorite">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <path
+                  d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+              </svg>
+              <span id="lb-drawer-fav-text">Favorite</span>
+            </button>
+          </div>
+        </div>
+      </aside>
     </div>
   </div>
 
   <!-- Toast Notification -->
   <div id="toast" class="toast-notification" aria-live="polite">
-    <span id="toast-message">Connected to WordPress backend</span>
+    <span id="toast-message">Connected to Birthday Archive</span>
   </div>
 
-  <script src="app.js"></script>
+  <script type="module" src="app.js"></script>
 </body>
+
 </html>

@@ -1,134 +1,123 @@
 /**
- * e-Globe Showcase - WordPress & WooCommerce Backend Integration
- * Dynamically fetches live products from LocalWP (http://localhost:10004)
+ * The Birthday Archive - Editorial Monograph & Photo Gallery
+ * Living photo gallery for birthday photoshoot moments.
+ * Zero Pricing - Dedicated exclusively to photography, memories & milestones.
  */
 
-// Backend API Endpoints (Direct and Vite proxy fallbacks)
-const WP_BACKEND_URL = 'http://localhost:10004';
-const PRODUCTS_API = `${WP_BACKEND_URL}/wp-json/wc/store/products?per_page=100`;
-const CATEGORIES_API = `${WP_BACKEND_URL}/wp-json/wc/store/products/categories?per_page=100`;
-const PROXY_PRODUCTS_API = '/wp-json/wc/store/products?per_page=100';
-const PROXY_CATEGORIES_API = '/wp-json/wc/store/products/categories?per_page=100';
+// Backend API Endpoints
+const PRODUCTS_API = '/api/products';
+const CATEGORIES_API = '/api/categories';
 
 // SVG Icons
 const ICONS = {
   heartOutline: `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>`,
   heartFilled: `<svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>`,
-  zoom: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>`,
-  cart: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>`,
-  external: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>`
+  zoom: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>`,
+  pin: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>`,
+  calendar: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>`
 };
 
-// Application State (Purely dynamic from backend)
+// Application State
 let products = [];
 let categories = [];
 let currentCategory = 'all';
 let searchQuery = '';
 let currentSort = 'newest';
-let currentLayout = 'masonry';
-let bookmarkedIds = new Set(JSON.parse(localStorage.getItem('eglobe_bookmarks') || '[]'));
+let currentLayout = 'grid';
+let bookmarkedIds = new Set(JSON.parse(localStorage.getItem('birthday_favorites') || '[]'));
 
-// Lightbox state
+// Lightbox State
 let currentLightboxIndex = -1;
 let filteredProducts = [];
 
 // ================= INITIALIZATION =================
 document.addEventListener('DOMContentLoaded', () => {
   setupEventListeners();
+  startCountdownTimer();
+  initPetals();
   loadBackendData();
 });
 
-// Load products and categories from WordPress Backend
+// Load photo collection and albums from Backend
 async function loadBackendData() {
-  setConnectionStatus('loading', 'Connecting to WordPress backend...');
+  setConnectionStatus('loading', 'Connecting to birthday archive...');
   const syncBtn = document.getElementById('sync-backend-btn');
   if (syncBtn) syncBtn.classList.add('syncing');
 
   try {
-    // 1. Fetch categories
+    // 1. Fetch albums / categories
     await fetchCategories();
-    // 2. Fetch products
+    // 2. Fetch photoshoot photos
     await fetchProducts();
 
-    setConnectionStatus('online', `WordPress Backend: Connected (${products.length} products)`);
-    showToast(`Loaded ${products.length} products from WordPress backend!`);
-    
+    setConnectionStatus('online', `Archive Live • ${products.length} Moments`);
+    showToast(`Loaded ${products.length} birthday moments from archive!`);
+
     const syncTimeEl = document.getElementById('sync-time-text');
     if (syncTimeEl) {
       syncTimeEl.innerText = `Synced at ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
     }
   } catch (error) {
-    console.error('Failed to connect to WordPress backend:', error);
-    setConnectionStatus('offline', 'WordPress Backend: Offline (Check LocalWP)');
-    showToast('Could not reach LocalWP backend. Make sure site is running at localhost:10004');
+    console.error('Failed to connect to backend archive:', error);
+    setConnectionStatus('offline', 'Archive Offline');
+    showToast('Could not reach backend API at /api/products');
     renderOfflineState();
   } finally {
     if (syncBtn) syncBtn.classList.remove('syncing');
   }
 }
 
-// Fetch WooCommerce categories
+// Fetch photo albums
 async function fetchCategories() {
-  let response;
-  try {
-    response = await fetch(CATEGORIES_API);
-  } catch (_) {
-    response = await fetch(PROXY_CATEGORIES_API);
-  }
-
-  if (!response.ok) throw new Error(`HTTP ${response.status} fetching categories`);
+  const response = await fetch(CATEGORIES_API);
+  if (!response.ok) throw new Error(`HTTP ${response.status} fetching albums`);
   const rawCategories = await response.json();
   categories = rawCategories.filter(c => c.count > 0 || c.id);
   renderCategoryTabs();
 }
 
-// Fetch WooCommerce products
+// Fetch birthday photos
 async function fetchProducts() {
-  let response;
-  try {
-    response = await fetch(PRODUCTS_API);
-  } catch (_) {
-    response = await fetch(PROXY_PRODUCTS_API);
-  }
-
-  if (!response.ok) throw new Error(`HTTP ${response.status} fetching products`);
+  const response = await fetch(PRODUCTS_API);
+  if (!response.ok) throw new Error(`HTTP ${response.status} fetching photos`);
   const rawProducts = await response.json();
-  
-  // Transform backend WooCommerce format to standardized model
+
+  // Transform backend format to photography model
   products = rawProducts.map(p => {
-    const rawPrice = parseInt(p.prices?.price || '0', 10);
-    const minorUnit = p.prices?.currency_minor_unit || 2;
-    const priceNum = rawPrice / Math.pow(10, minorUnit);
+    const categoryName = p.category || (p.categories && p.categories[0] ? p.categories[0].name : 'Portraits');
+    const categorySlug = p.categorySlug || (p.categories && p.categories[0] ? p.categories[0].slug : categoryName.toLowerCase().replace(/[^a-z0-9]+/g, '-'));
 
-    const rawRegularPrice = parseInt(p.prices?.regular_price || '0', 10);
-    const regularPriceNum = rawRegularPrice / Math.pow(10, minorUnit);
-
-    const currencyPrefix = p.prices?.currency_prefix || p.prices?.currency_symbol || 'රු';
+    let imageList = [];
+    if (Array.isArray(p.images) && p.images.length > 0) {
+      imageList = p.images;
+    } else if (p.image) {
+      imageList = [{ src: p.image, alt: p.name }];
+    } else {
+      imageList = [{ src: 'assets/portrait.jpg', alt: p.name }];
+    }
 
     return {
       id: p.id,
-      name: p.name,
-      slug: p.slug,
-      permalink: p.permalink || `${WP_BACKEND_URL}/product/${p.slug}/`,
-      sku: p.sku || 'N/A',
-      price: priceNum,
-      regularPrice: regularPriceNum,
-      formattedPrice: formatCurrency(priceNum, currencyPrefix),
-      formattedRegularPrice: formatCurrency(regularPriceNum, currencyPrefix),
-      onSale: p.on_sale,
-      inStock: p.is_in_stock,
-      images: (p.images && p.images.length > 0) ? p.images : [{ src: 'assets/portrait.jpg', alt: p.name }],
-      category: p.categories && p.categories.length > 0 ? p.categories[0].name : 'General',
-      categorySlug: p.categories && p.categories.length > 0 ? p.categories[0].slug : 'general',
-      categories: p.categories || [],
-      shortDescription: stripHtml(p.short_description || ''),
+      name: p.name || 'Untitled Moment',
+      slug: p.slug || (p.name || 'moment').toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+      category: categoryName,
+      categorySlug: categorySlug,
+      categories: p.categories || [{ name: categoryName, slug: categorySlug }],
+      date: p.date || 'October 9, 2026',
+      location: p.location || 'Rosewood Botanical Gardens',
+      image: imageList[0].src,
+      images: imageList,
+      shortDescription: stripHtml(p.shortDescription || p.short_description || ''),
       description: stripHtml(p.description || ''),
-      attributes: p.attributes || [],
-      createdAt: p.date_created || ''
+      featured: Boolean(p.featured),
+      published: p.published !== false,
+      attributes: Array.isArray(p.attributes) ? p.attributes : [],
+      createdAt: p.createdAt || ''
     };
   });
 
   renderGallery();
+  renderHighlightReel();
   updateStats();
 }
 
@@ -139,10 +128,7 @@ function renderCategoryTabs() {
 
   container.innerHTML = `
     <button class="cat-tab ${currentCategory === 'all' ? 'active' : ''}" data-category="all" role="tab" aria-selected="${currentCategory === 'all'}">
-      All Products
-    </button>
-    <button class="cat-tab ${currentCategory === 'bookmarks' ? 'active' : ''}" data-category="bookmarks" role="tab" aria-selected="${currentCategory === 'bookmarks'}">
-      Bookmarked
+      All Moments
     </button>
   `;
 
@@ -153,7 +139,7 @@ function renderCategoryTabs() {
     btn.setAttribute('role', 'tab');
     btn.setAttribute('aria-selected', currentCategory === cat.slug);
     btn.innerHTML = `${cat.name} <span class="cat-count">(${cat.count})</span>`;
-    
+
     btn.addEventListener('click', () => {
       document.querySelectorAll('.cat-tab').forEach(b => {
         b.classList.remove('active');
@@ -168,19 +154,20 @@ function renderCategoryTabs() {
     container.appendChild(btn);
   });
 
-  // Re-bind click for default "all" and "bookmarks"
-  container.querySelectorAll('.cat-tab').forEach(btn => {
-    btn.addEventListener('click', () => {
+  // Click handler for All Moments
+  const allBtn = container.querySelector('.cat-tab[data-category="all"]');
+  if (allBtn) {
+    allBtn.addEventListener('click', () => {
       document.querySelectorAll('.cat-tab').forEach(b => {
         b.classList.remove('active');
         b.setAttribute('aria-selected', 'false');
       });
-      btn.classList.add('active');
-      btn.setAttribute('aria-selected', 'true');
-      currentCategory = btn.dataset.category;
+      allBtn.classList.add('active');
+      allBtn.setAttribute('aria-selected', 'true');
+      currentCategory = 'all';
       renderGallery();
     });
-  });
+  }
 }
 
 function renderGallery() {
@@ -190,14 +177,16 @@ function renderGallery() {
 
   // Filter
   filteredProducts = products.filter(p => {
-    const matchCategory = 
-      currentCategory === 'all' ? true :
-      currentCategory === 'bookmarks' ? bookmarkedIds.has(p.id) :
-      p.categories.some(c => c.slug === currentCategory);
+    if (p.published === false) return false;
 
-    const matchSearch = searchQuery === '' || 
+    const matchCategory =
+      currentCategory === 'all' ? true :
+        currentCategory === 'bookmarks' ? bookmarkedIds.has(p.id) :
+          p.categorySlug === currentCategory || p.category === currentCategory;
+
+    const matchSearch = searchQuery === '' ||
       p.name.toLowerCase().includes(searchQuery) ||
-      p.sku.toLowerCase().includes(searchQuery) ||
+      p.location.toLowerCase().includes(searchQuery) ||
       p.shortDescription.toLowerCase().includes(searchQuery) ||
       p.category.toLowerCase().includes(searchQuery);
 
@@ -206,12 +195,10 @@ function renderGallery() {
 
   // Sort
   filteredProducts.sort((a, b) => {
-    if (currentSort === 'newest') return b.id - a.id;
-    if (currentSort === 'price-asc') return a.price - b.price;
-    if (currentSort === 'price-desc') return b.price - a.price;
-    if (currentSort === 'sale') return (b.onSale ? 1 : 0) - (a.onSale ? 1 : 0);
+    if (currentSort === 'featured') return (b.featured ? 1 : 0) - (a.featured ? 1 : 0);
+    if (currentSort === 'oldest') return a.id - b.id;
     if (currentSort === 'title') return a.name.localeCompare(b.name);
-    return 0;
+    return b.id - a.id; // newest first
   });
 
   if (filteredProducts.length === 0) {
@@ -224,135 +211,301 @@ function renderGallery() {
   container.innerHTML = '';
 
   filteredProducts.forEach((product, index) => {
-    const card = createProductCard(product, index);
+    const card = createPhotoCard(product, index);
     container.appendChild(card);
   });
 }
 
-function createProductCard(product, index) {
+const SCRAPBOOK_TAPES = [
+  { text: "chapter 21 ♡", variant: "rose", pinType: "gold", quote: "Stepping into 21 with grace, laughter, and an open heart" },
+  { text: "21 sweet wishes", variant: "blush", pinType: "clip", quote: "Candlelit moments, blush peonies, and twenty-one heartfelt wishes" },
+  { text: "golden hour glow", variant: "slate", pinType: "gold", quote: "Sun-drenched birthday memories wrapped in golden amber warmth" },
+  { text: "twenty-one & free", variant: "cream", pinType: "clip", quote: "Barefoot along the shoreline, chasing dreams and stepping into twenty-one" },
+  { text: "roses & keepsakes", variant: "sage", pinType: "heart", quote: "Artisan French garden roses and cherished 21st celebration keepsakes" },
+  { text: "birthday joy ♡", variant: "rose", pinType: "gold", quote: "Ocean breezes, pure birthday smiles, and golden horizon sunsets" }
+];
+
+function createPhotoCard(product, index) {
   const card = document.createElement('article');
-  card.className = 'photo-card product-card';
-  card.id = `product-${product.id}`;
+  card.className = `photo-card polaroid-scrapbook-card polaroid-rot-${(index % 6) + 1}`;
+  card.id = `photo-${product.id}`;
 
   const isBookmarked = bookmarkedIds.has(product.id);
-  const mainImage = product.images[0]?.src || 'assets/portrait.jpg';
+  const mainImage = product.image || 'assets/portrait.jpg';
+  const tape = SCRAPBOOK_TAPES[index % SCRAPBOOK_TAPES.length];
+  const poeticQuote = tape.quote || product.shortDescription || '';
+
+  // Render pin or clip accent
+  let pinAccentHtml = '';
+  if (tape.pinType === 'gold') {
+    pinAccentHtml = '<div class="scrapbook-pin-accent" title="Pinned memory" aria-hidden="true"></div>';
+  } else if (tape.pinType === 'clip') {
+    pinAccentHtml = '<div class="scrapbook-paperclip-accent" title="Clipped moment" aria-hidden="true"></div>';
+  } else if (tape.pinType === 'heart') {
+    pinAccentHtml = '<div class="scrapbook-heart-seal" title="Cherished seal" aria-hidden="true">♥</div>';
+  }
 
   card.innerHTML = `
-    <div class="card-media-wrapper" role="button" tabindex="0" aria-label="View ${product.name} specifications">
-      <div class="card-floating-bar">
-        <span class="card-badge">${product.category}</span>
-        <button class="card-fav-btn ${isBookmarked ? 'is-favorite' : ''}" title="${isBookmarked ? 'Remove bookmark' : 'Bookmark product'}" aria-label="Bookmark toggle">
-          ${isBookmarked ? ICONS.heartFilled : ICONS.heartOutline}
-        </button>
-      </div>
-      <img src="${mainImage}" alt="${product.name}" loading="lazy" onerror="this.src='assets/portrait.jpg'">
+    <!-- Scrapbook Washi Tape Header Strip -->
+    <div class="scrapbook-tape tape-${tape.variant}" aria-hidden="true">
+      <span class="tape-script-text">${escapeHtml(tape.text)}</span>
+    </div>
+    ${pinAccentHtml}
+
+    <!-- Polaroid Photo Frame -->
+    <div class="card-media-wrapper polaroid-photo-frame" role="button" tabindex="0" aria-label="View ${escapeHtml(product.name)} photo in lightbox">
+      <img src="${escapeHtml(mainImage)}" alt="${escapeHtml(product.name)}" loading="lazy" onerror="this.src='assets/portrait.jpg'">
       <div class="card-hover-overlay">
         <span class="quick-view-badge">
           ${ICONS.zoom}
-          <span>Quick View & Specs</span>
+          <span>View Moment</span>
         </span>
       </div>
     </div>
-    <div class="card-content">
-      <div class="card-title-row">
-        <h3 class="card-title">${product.name}</h3>
-        <span class="card-date stock-indicator ${product.inStock ? 'in-stock' : 'out-of-stock'}">
-          ${product.inStock ? 'In Stock' : 'Out of Stock'}
-        </span>
+
+    <!-- Polaroid Bottom Paper Section -->
+    <div class="polaroid-paper-bottom">
+      <div class="polaroid-caption-header">
+        <h3 class="polaroid-title">${escapeHtml(product.name)}</h3>
+        <button class="card-fav-btn polaroid-fav-btn ${isBookmarked ? 'is-favorite' : ''}" title="${isBookmarked ? 'Remove from favorites' : 'Add to favorites'}" aria-label="Favorite toggle">
+          ${isBookmarked ? ICONS.heartFilled : ICONS.heartOutline}
+        </button>
       </div>
 
-      <div class="product-price-row">
-        <span class="product-price">${product.formattedPrice}</span>
-        ${product.onSale && product.price < product.regularPrice ? `<span class="product-regular-price">${product.formattedRegularPrice}</span>` : ''}
-        ${product.onSale ? `<span class="sale-pill">Sale</span>` : ''}
-      </div>
+      <!-- Poetic Typewriter Reflection (from User Reference 2) -->
+      ${poeticQuote ? `<p class="polaroid-typewriter-quote">“${escapeHtml(poeticQuote)}”</p>` : ''}
 
-      ${product.shortDescription ? `<p class="card-story">${product.shortDescription}</p>` : ''}
-      
-      <div class="card-actions-row">
-        <span class="card-sku">SKU: ${product.sku}</span>
-        <a href="${product.permalink}" target="_blank" rel="noopener noreferrer" class="card-action-btn external-store-link" title="Open product on WordPress">
-          ${ICONS.external}
-          <span>View on Store</span>
-        </a>
+      <div class="polaroid-meta-line">
+        <span class="polaroid-meta-chip">${ICONS.calendar} ${escapeHtml(product.date)}</span>
+        <span class="meta-dot-sep">•</span>
+        <span class="polaroid-meta-chip">${ICONS.pin} ${escapeHtml(product.location)}</span>
       </div>
     </div>
   `;
 
-  // Media click -> Open Lightbox
-  const mediaWrapper = card.querySelector('.card-media-wrapper');
-  mediaWrapper.addEventListener('click', (e) => {
-    if (!e.target.closest('.card-fav-btn')) {
-      openLightbox(index);
-    }
-  });
-
-  // Bookmark toggle
+  // Favorite toggle
   const favBtn = card.querySelector('.card-fav-btn');
-  favBtn.addEventListener('click', (e) => {
-    e.stopPropagation();
-    toggleBookmark(product.id);
-  });
+  if (favBtn) {
+    favBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleBookmark(product.id);
+    });
+  }
+
+  // Lightbox trigger
+  const mediaWrapper = card.querySelector('.card-media-wrapper');
+  if (mediaWrapper) {
+    mediaWrapper.addEventListener('click', () => {
+      openLightbox(index);
+    });
+
+    mediaWrapper.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        openLightbox(index);
+      }
+    });
+  }
 
   return card;
 }
 
+
 function updateStats() {
   const summaryEl = document.getElementById('stat-summary-text');
   if (summaryEl) {
-    summaryEl.innerText = `${products.length} live products loaded from WordPress backend • ${categories.length} categories active`;
+    const totalCount = products.length;
+    const albumCount = categories.length;
+    summaryEl.textContent = `Displaying ${totalCount} milestone photos across ${albumCount} albums.`;
   }
 }
 
-// ================= FULLSCREEN LIGHTBOX & PRODUCT DETAILS =================
+// ================= LIGHTBOX MODAL =================
 function setupLightboxEvents() {
   const lbModal = document.getElementById('lightbox-modal');
-  const lbBackdrop = document.getElementById('lightbox-backdrop');
   const lbCloseBtn = document.getElementById('lb-close-btn');
+  const lbBackdrop = document.getElementById('lightbox-backdrop');
   const lbPrevBtn = document.getElementById('lb-prev-btn');
   const lbNextBtn = document.getElementById('lb-next-btn');
   const lbFavBtn = document.getElementById('lb-favorite-btn');
+  const lbDrawerFavBtn = document.getElementById('lb-drawer-fav-btn');
+  const lbCinemaBtn = document.getElementById('lb-cinema-btn');
+  const lbShareBtn = document.getElementById('lb-share-btn');
+  const lbImage = document.getElementById('lightbox-image');
+  const lbSheetHandle = document.getElementById('lb-sheet-handle');
+
+  if (!lbModal) return;
 
   const closeLb = () => {
     lbModal.classList.remove('open');
+    lbModal.classList.remove('cinema-mode');
     lbModal.setAttribute('aria-hidden', 'true');
+    if (lbCinemaBtn) lbCinemaBtn.classList.remove('is-active');
   };
 
-  lbCloseBtn.addEventListener('click', closeLb);
-  lbBackdrop.addEventListener('click', closeLb);
+  const toggleCinemaMode = () => {
+    lbModal.classList.toggle('cinema-mode');
+    const isCinema = lbModal.classList.contains('cinema-mode');
+    if (lbCinemaBtn) {
+      lbCinemaBtn.classList.toggle('is-active', isCinema);
+      lbCinemaBtn.setAttribute('title', isCinema ? 'Show Details (I)' : 'Cinema View (I)');
+    }
+    showToast(isCinema ? 'Cinema Mode: Details hidden' : 'Dossier View: Details restored');
+  };
 
-  lbPrevBtn.addEventListener('click', () => navigateLightbox(-1));
-  lbNextBtn.addEventListener('click', () => navigateLightbox(1));
-
-  lbFavBtn.addEventListener('click', () => {
+  const toggleCurrentFavorite = () => {
     if (currentLightboxIndex >= 0 && filteredProducts[currentLightboxIndex]) {
       const p = filteredProducts[currentLightboxIndex];
       toggleBookmark(p.id);
       updateLightboxContent();
     }
-  });
+  };
 
+  const shareCurrentMoment = async () => {
+    if (currentLightboxIndex < 0 || !filteredProducts[currentLightboxIndex]) return;
+    const p = filteredProducts[currentLightboxIndex];
+    const shareUrl = window.location.origin + window.location.pathname + `?moment=${encodeURIComponent(p.id)}`;
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: p.name,
+          text: `Check out "${p.name}" from Raveesha's 21st Birthday Archive!`,
+          url: shareUrl
+        });
+        return;
+      } catch (err) {
+        // Fallback to clipboard
+      }
+    }
+
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      showToast('Moment link copied to clipboard!');
+    } catch {
+      showToast('Moment ready to share!');
+    }
+  };
+
+  if (lbCloseBtn) lbCloseBtn.addEventListener('click', closeLb);
+  if (lbBackdrop) lbBackdrop.addEventListener('click', closeLb);
+  if (lbPrevBtn) lbPrevBtn.addEventListener('click', (e) => { e.stopPropagation(); navigateLightbox(-1); });
+  if (lbNextBtn) lbNextBtn.addEventListener('click', (e) => { e.stopPropagation(); navigateLightbox(1); });
+  if (lbFavBtn) lbFavBtn.addEventListener('click', toggleCurrentFavorite);
+  if (lbDrawerFavBtn) lbDrawerFavBtn.addEventListener('click', toggleCurrentFavorite);
+  if (lbCinemaBtn) lbCinemaBtn.addEventListener('click', toggleCinemaMode);
+  if (lbShareBtn) lbShareBtn.addEventListener('click', shareCurrentMoment);
+
+  // Click image on desktop to toggle cinema full-bleed view
+  if (lbImage) {
+    lbImage.addEventListener('click', () => {
+      if (window.innerWidth > 900) {
+        toggleCinemaMode();
+      }
+    });
+  }
+
+  // Mobile sheet handle
+  if (lbSheetHandle) {
+    lbSheetHandle.addEventListener('click', () => {
+      const drawer = document.getElementById('lightbox-info-drawer');
+      if (drawer) {
+        drawer.scrollIntoView({ behavior: 'smooth' });
+      }
+    });
+  }
+
+  // Keyboard navigation & shortcuts
   window.addEventListener('keydown', (e) => {
     if (!lbModal.classList.contains('open')) return;
+    if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
+
     if (e.key === 'Escape') closeLb();
     if (e.key === 'ArrowLeft') navigateLightbox(-1);
     if (e.key === 'ArrowRight') navigateLightbox(1);
+    if (e.key === 'f' || e.key === 'F') toggleCurrentFavorite();
+    if (e.key === 'c' || e.key === 'C' || e.key === 'i' || e.key === 'I') toggleCinemaMode();
   });
+
+  // Touch Swipe Gestures for Mobile
+  let touchStartX = 0;
+  let touchStartY = 0;
+  let touchEndX = 0;
+  let touchEndY = 0;
+
+  const handleTouchStart = (e) => {
+    if (e.touches && e.touches.length === 1) {
+      touchStartX = e.touches[0].clientX;
+      touchStartY = e.touches[0].clientY;
+      touchEndX = touchStartX;
+      touchEndY = touchStartY;
+    }
+  };
+
+  const handleTouchMove = (e) => {
+    if (e.touches && e.touches.length === 1) {
+      touchEndX = e.touches[0].clientX;
+      touchEndY = e.touches[0].clientY;
+    }
+  };
+
+  const handleTouchEnd = () => {
+    const diffX = touchEndX - touchStartX;
+    const diffY = touchEndY - touchStartY;
+    const absX = Math.abs(diffX);
+    const absY = Math.abs(diffY);
+
+    if (absX > 45 && absX > absY) {
+      if (diffX < 0) {
+        navigateLightbox(1); // Swipe left -> Next
+      } else {
+        navigateLightbox(-1); // Swipe right -> Prev
+      }
+    } else if (diffY > 90 && absY > absX) {
+      closeLb(); // Swipe down -> Close
+    }
+  };
+
+  const mediaWrapper = document.getElementById('lightbox-media-wrapper');
+  if (mediaWrapper) {
+    mediaWrapper.addEventListener('touchstart', handleTouchStart, { passive: true });
+    mediaWrapper.addEventListener('touchmove', handleTouchMove, { passive: true });
+    mediaWrapper.addEventListener('touchend', handleTouchEnd, { passive: true });
+  }
 }
 
 function openLightbox(index) {
   if (index < 0 || index >= filteredProducts.length) return;
   currentLightboxIndex = index;
   const lbModal = document.getElementById('lightbox-modal');
-  lbModal.classList.add('open');
-  lbModal.setAttribute('aria-hidden', 'false');
-  updateLightboxContent();
+  if (lbModal) {
+    lbModal.classList.add('open');
+    lbModal.setAttribute('aria-hidden', 'false');
+    updateLightboxContent();
+    preloadAdjacentImages();
+  }
 }
+window.openLightbox = openLightbox;
 
 function navigateLightbox(direction) {
   if (filteredProducts.length === 0) return;
   currentLightboxIndex = (currentLightboxIndex + direction + filteredProducts.length) % filteredProducts.length;
   updateLightboxContent();
+  preloadAdjacentImages();
+}
+
+function preloadAdjacentImages() {
+  if (filteredProducts.length <= 1) return;
+  const nextIdx = (currentLightboxIndex + 1) % filteredProducts.length;
+  const prevIdx = (currentLightboxIndex - 1 + filteredProducts.length) % filteredProducts.length;
+
+  [nextIdx, prevIdx].forEach(idx => {
+    const item = filteredProducts[idx];
+    if (item && item.image) {
+      const img = new Image();
+      img.src = item.image;
+    }
+  });
 }
 
 function updateLightboxContent() {
@@ -362,68 +515,113 @@ function updateLightboxContent() {
   const lbImage = document.getElementById('lightbox-image');
   const lbCounter = document.getElementById('lightbox-counter');
   const lbCatBadge = document.getElementById('lb-category-badge');
-  const lbStockBadge = document.getElementById('lb-stock-badge');
-  const lbSkuText = document.getElementById('lb-sku-text');
+  const lbDateText = document.getElementById('lb-date-text');
+  const lbLocationText = document.getElementById('lb-location-text');
   const lbTitle = document.getElementById('lb-title');
-  const lbPrice = document.getElementById('lb-price');
   const lbCaption = document.getElementById('lb-caption');
   const lbFavBtn = document.getElementById('lb-favorite-btn');
-  const lbStoreLink = document.getElementById('lb-store-link');
+  const lbDrawerFavBtn = document.getElementById('lb-drawer-fav-btn');
+  const lbDrawerFavText = document.getElementById('lb-drawer-fav-text');
   const lbAttributesContainer = document.getElementById('lb-attributes-container');
 
-  const mainImage = product.images[0]?.src || 'assets/portrait.jpg';
-  lbImage.style.opacity = '0';
-  setTimeout(() => {
-    lbImage.src = mainImage;
-    lbImage.alt = product.name;
-    lbImage.style.opacity = '1';
-  }, 80);
-
-  lbCounter.innerText = `Product ${currentLightboxIndex + 1} of ${filteredProducts.length}`;
-  lbCatBadge.innerText = product.category;
-  lbStockBadge.innerText = product.inStock ? 'In Stock' : 'Out of Stock';
-  lbStockBadge.className = `badge-pill ${product.inStock ? 'stock-pill' : 'out-of-stock-pill'}`;
-  lbSkuText.innerText = `SKU: ${product.sku}`;
-  lbTitle.innerText = product.name;
-  lbPrice.innerHTML = `
-    <span>${product.formattedPrice}</span>
-    ${product.onSale && product.price < product.regularPrice ? `<del>${product.formattedRegularPrice}</del>` : ''}
-  `;
-  lbCaption.innerText = product.description || product.shortDescription || 'No description provided in WordPress backend.';
-  lbStoreLink.href = product.permalink;
-
-  const isBookmarked = bookmarkedIds.has(product.id);
-  if (isBookmarked) {
-    lbFavBtn.classList.add('is-favorite');
-    lbFavBtn.innerHTML = ICONS.heartFilled;
-  } else {
-    lbFavBtn.classList.remove('is-favorite');
-    lbFavBtn.innerHTML = ICONS.heartOutline;
+  const mainImage = product.image || 'assets/portrait.jpg';
+  if (lbImage) {
+    lbImage.style.opacity = '0';
+    lbImage.style.transform = 'scale(0.97)';
+    setTimeout(() => {
+      lbImage.src = mainImage;
+      lbImage.alt = product.name;
+      lbImage.style.opacity = '1';
+      lbImage.style.transform = 'scale(1)';
+    }, 90);
   }
 
-  // Render specifications / attributes from WordPress backend
-  if (product.attributes && product.attributes.length > 0) {
-    lbAttributesContainer.style.display = 'grid';
-    lbAttributesContainer.innerHTML = product.attributes.map(attr => `
-      <div class="attr-box">
-        <span class="attr-name">${attr.name}</span>
-        <span class="attr-val">${attr.terms && attr.terms.length > 0 ? attr.terms.map(t => t.name).join(', ') : 'Yes'}</span>
-      </div>
-    `).join('');
-  } else {
-    lbAttributesContainer.style.display = 'none';
-    lbAttributesContainer.innerHTML = '';
+  if (lbCounter) lbCounter.innerText = `Moment ${currentLightboxIndex + 1} of ${filteredProducts.length}`;
+  if (lbCatBadge) lbCatBadge.innerText = product.category;
+  if (lbDateText) lbDateText.innerText = product.date;
+  if (lbLocationText) lbLocationText.innerText = product.location;
+  if (lbTitle) lbTitle.innerText = product.name;
+  if (lbCaption) lbCaption.innerText = product.description || product.shortDescription || 'A cherished 21st birthday milestone memory.';
+
+  const isBookmarked = bookmarkedIds.has(product.id);
+  if (lbFavBtn) {
+    if (isBookmarked) {
+      lbFavBtn.classList.add('is-favorite');
+      lbFavBtn.innerHTML = ICONS.heartFilled;
+    } else {
+      lbFavBtn.classList.remove('is-favorite');
+      lbFavBtn.innerHTML = ICONS.heartOutline;
+    }
+  }
+
+  if (lbDrawerFavBtn) {
+    if (isBookmarked) {
+      lbDrawerFavBtn.classList.add('is-favorite');
+      const svg = lbDrawerFavBtn.querySelector('svg');
+      if (svg) svg.outerHTML = ICONS.heartFilled;
+      if (lbDrawerFavText) lbDrawerFavText.innerText = 'Favorited';
+    } else {
+      lbDrawerFavBtn.classList.remove('is-favorite');
+      const svg = lbDrawerFavBtn.querySelector('svg');
+      if (svg) svg.outerHTML = ICONS.heartOutline;
+      if (lbDrawerFavText) lbDrawerFavText.innerText = 'Favorite';
+    }
+  }
+
+  // Render technical shot details / attributes
+  if (lbAttributesContainer) {
+    if (product.attributes && product.attributes.length > 0) {
+      lbAttributesContainer.style.display = 'grid';
+      lbAttributesContainer.innerHTML = product.attributes.map(attr => {
+        const val = attr.terms && attr.terms[0] ? attr.terms[0].name : (attr.value || 'Yes');
+        return `
+          <div class="attr-box">
+            <span class="attr-name">${escapeHtml(attr.name)}</span>
+            <span class="attr-val">${escapeHtml(val)}</span>
+          </div>
+        `;
+      }).join('');
+    } else {
+      lbAttributesContainer.style.display = 'none';
+      lbAttributesContainer.innerHTML = '';
+    }
   }
 }
 
 // ================= EVENT LISTENERS =================
 function setupEventListeners() {
-  // Sync live products button
   const syncBtn = document.getElementById('sync-backend-btn');
   if (syncBtn) syncBtn.addEventListener('click', loadBackendData);
 
   const forceReloadBtn = document.getElementById('force-reload-btn');
   if (forceReloadBtn) forceReloadBtn.addEventListener('click', loadBackendData);
+
+  // Hero Cover Frame Lightbox Trigger
+  const heroCoverFrame = document.getElementById('hero-cover-frame');
+  if (heroCoverFrame) {
+    heroCoverFrame.addEventListener('click', () => {
+      openLightbox(0);
+    });
+    heroCoverFrame.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        openLightbox(0);
+      }
+    });
+  }
+
+  // Hero Real Pink Roses Card Lightbox Trigger
+  const heroRosesCard = document.querySelector('.hero-roses-floating-card');
+  if (heroRosesCard) {
+    heroRosesCard.addEventListener('click', () => {
+      const roseIdx = filteredProducts.findIndex(p => p.id === 5 || p.name.includes('Roses'));
+      if (roseIdx !== -1) {
+        openLightbox(roseIdx);
+      } else {
+        openLightbox(0);
+      }
+    });
+  }
 
   // Search input
   const searchInput = document.getElementById('search-input');
@@ -431,13 +629,13 @@ function setupEventListeners() {
   if (searchInput) {
     searchInput.addEventListener('input', (e) => {
       searchQuery = e.target.value.toLowerCase().trim();
-      clearSearchBtn.style.display = searchQuery ? 'inline-block' : 'none';
+      if (clearSearchBtn) clearSearchBtn.style.display = searchQuery ? 'inline-block' : 'none';
       renderGallery();
     });
   }
   if (clearSearchBtn) {
     clearSearchBtn.addEventListener('click', () => {
-      searchInput.value = '';
+      if (searchInput) searchInput.value = '';
       searchQuery = '';
       clearSearchBtn.style.display = 'none';
       renderGallery();
@@ -458,7 +656,7 @@ function setupEventListeners() {
   const viewGridBtn = document.getElementById('view-grid-btn');
   const photosGrid = document.getElementById('photos-grid');
 
-  if (viewMasonryBtn && viewGridBtn) {
+  if (viewMasonryBtn && viewGridBtn && photosGrid) {
     viewMasonryBtn.addEventListener('click', () => {
       viewMasonryBtn.classList.add('active');
       viewGridBtn.classList.remove('active');
@@ -474,42 +672,272 @@ function setupEventListeners() {
     });
   }
 
-  // Export JSON backup
-  const exportBtn = document.getElementById('export-album-btn');
-  if (exportBtn) {
-    exportBtn.addEventListener('click', () => {
-      const data = {
-        exportDate: new Date().toISOString(),
-        source: WP_BACKEND_URL,
-        totalProducts: products.length,
-        products: products
-      };
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `eglobe_wordpress_products_${new Date().toISOString().split('T')[0]}.json`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      showToast('Exported catalog data as JSON');
+
+  // Hearted memories quick links (Header and Hero)
+  const navBookmarksBtn = document.getElementById('nav-bookmarks-btn');
+  const heroHeartedBtn = document.getElementById('hero-hearted-btn');
+
+  function openHeartedMemories() {
+    currentCategory = 'bookmarks';
+    document.querySelectorAll('.cat-tab').forEach(b => {
+      const isMatch = b.dataset.category === 'bookmarks';
+      b.classList.toggle('active', isMatch);
+      b.setAttribute('aria-selected', isMatch ? 'true' : 'false');
+    });
+    renderGallery();
+    const gallerySection = document.getElementById('gallery-controls');
+    if (gallerySection) {
+      gallerySection.scrollIntoView({ behavior: 'smooth' });
+    }
+  }
+
+  if (navBookmarksBtn) navBookmarksBtn.addEventListener('click', openHeartedMemories);
+  if (heroHeartedBtn) heroHeartedBtn.addEventListener('click', openHeartedMemories);
+
+  setupReelStripAutoRotation();
+  setupLightboxEvents();
+}
+
+// ================= HIGHLIGHT REEL DYNAMIC BACKEND & ROTATABLE SCROLL =================
+let reelAnimFrame = null;
+let isReelHovered = false;
+let isReelInteracting = false;
+
+function renderHighlightReel() {
+  const reel = document.getElementById('story-photo-reel-strip') || document.querySelector('.story-photo-reel-strip');
+  if (!reel) return;
+
+  const validPhotos = products.filter(p => p.published !== false);
+  if (validPhotos.length === 0) return;
+
+  // Repeat sequence 3 times for completely seamless, infinite wrap-around rotation
+  const repeatCount = 3;
+  reel.innerHTML = '';
+
+  for (let r = 0; r < repeatCount; r++) {
+    validPhotos.forEach((photo) => {
+      const globalIndex = products.findIndex(p => p.id === photo.id);
+      const item = document.createElement('div');
+      item.className = 'reel-item';
+      item.setAttribute('role', 'button');
+      item.setAttribute('tabindex', '0');
+      item.setAttribute('aria-label', `View ${photo.name || '21st Birthday Milestone'}`);
+      item.dataset.photoIndex = String(globalIndex >= 0 ? globalIndex : 0);
+
+      const img = document.createElement('img');
+      img.src = photo.image || (photo.images && photo.images[0]?.src) || 'assets/portrait.jpg';
+      img.alt = photo.name || '21st Birthday Milestone photo';
+      img.className = 'reel-photo';
+      img.loading = 'lazy';
+      item.appendChild(img);
+
+      reel.appendChild(item);
     });
   }
 
-  setupLightboxEvents();
+  setupReelStripAutoRotation(reel);
+}
+
+function setupReelStripAutoRotation(targetReel) {
+  const reel = targetReel || document.getElementById('story-photo-reel-strip') || document.querySelector('.story-photo-reel-strip');
+  if (!reel) return;
+
+  if (reelAnimFrame) {
+    cancelAnimationFrame(reelAnimFrame);
+    reelAnimFrame = null;
+  }
+
+  let isDown = false;
+  let startX = 0;
+  let scrollStart = 0;
+  let hasMoved = false;
+  const speed = 0.65; // Gentle, luxurious auto-rotation pace
+
+  // Hover pauses rotation so the user can inspect or click easily
+  reel.onmouseenter = () => { isReelHovered = true; };
+  reel.onmouseleave = () => { isReelHovered = false; };
+
+  // Mouse Grab & Drag to rotate manually
+  reel.onmousedown = (e) => {
+    isDown = true;
+    hasMoved = false;
+    isReelInteracting = true;
+    reel.classList.add('is-dragging');
+    startX = e.pageX - reel.offsetLeft;
+    scrollStart = reel.scrollLeft;
+  };
+
+  const onMouseUp = () => {
+    if (!isDown) return;
+    isDown = false;
+    isReelInteracting = false;
+    reel.classList.remove('is-dragging');
+  };
+  window.removeEventListener('mouseup', onMouseUp);
+  window.addEventListener('mouseup', onMouseUp);
+
+  reel.onmousemove = (e) => {
+    if (!isDown) return;
+    e.preventDefault();
+    const x = e.pageX - reel.offsetLeft;
+    const walk = (x - startX) * 1.5;
+    if (Math.abs(walk) > 4) {
+      hasMoved = true;
+    }
+    reel.scrollLeft = scrollStart - walk;
+    wrapLoop();
+  };
+
+  // Mobile Touch Swipe & Drag
+  let touchStartX = 0;
+  let touchScrollStart = 0;
+  let touchTimeout = null;
+
+  reel.ontouchstart = (e) => {
+    isReelInteracting = true;
+    if (e.touches && e.touches.length === 1) {
+      touchStartX = e.touches[0].clientX;
+      touchScrollStart = reel.scrollLeft;
+    }
+    if (touchTimeout) clearTimeout(touchTimeout);
+  };
+
+  reel.ontouchmove = (e) => {
+    if (e.touches && e.touches.length === 1) {
+      const touchX = e.touches[0].clientX;
+      const walk = (touchX - touchStartX) * 1.4;
+      reel.scrollLeft = touchScrollStart - walk;
+      wrapLoop();
+    }
+  };
+
+  reel.ontouchend = () => {
+    touchTimeout = setTimeout(() => {
+      isReelInteracting = false;
+    }, 1200);
+  };
+
+  // Lightbox click handler
+  reel.querySelectorAll('.reel-item').forEach(item => {
+    item.onclick = (e) => {
+      if (hasMoved) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        return;
+      }
+      const idx = parseInt(item.dataset.photoIndex, 10);
+      if (!isNaN(idx) && idx >= 0) {
+        openLightbox(idx);
+      }
+    };
+
+    item.onkeydown = (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        const idx = parseInt(item.dataset.photoIndex, 10);
+        if (!isNaN(idx) && idx >= 0) {
+          openLightbox(idx);
+        }
+      }
+    };
+  });
+
+  // Seamless wrap-around logic
+  function wrapLoop() {
+    const totalW = reel.scrollWidth;
+    if (totalW <= 0) return;
+    const oneThird = totalW / 3;
+    if (reel.scrollLeft >= oneThird * 2) {
+      reel.scrollLeft -= oneThird;
+    } else if (reel.scrollLeft <= 0) {
+      reel.scrollLeft += oneThird;
+    }
+  }
+
+  // Animation Loop (60fps continuous rotatable scroll)
+  function step() {
+    if (!isReelHovered && !isReelInteracting && !isDown) {
+      reel.scrollLeft += speed;
+      wrapLoop();
+    }
+    reelAnimFrame = requestAnimationFrame(step);
+  }
+
+  reelAnimFrame = requestAnimationFrame(step);
+}
+
+// ================= COUNTDOWN & AMBIENCE =================
+function startCountdownTimer() {
+  const cdDays = document.getElementById('cd-days');
+  const cdHours = document.getElementById('cd-hours');
+  const cdMinutes = document.getElementById('cd-minutes');
+  const cdSeconds = document.getElementById('cd-seconds');
+  if (!cdDays || !cdHours || !cdMinutes || !cdSeconds) return;
+
+  // Milestone Celebration Date: October 24, 2026
+  const targetDate = new Date('2026-10-24T18:00:00');
+
+  function updateCountdown() {
+    const now = new Date();
+    let diff = targetDate.getTime() - now.getTime();
+
+    // If target date in the past, loop into next anniversary milestone
+    if (diff <= 0) {
+      const nextMilestone = new Date(targetDate);
+      nextMilestone.setFullYear(now.getFullYear() + (now > nextMilestone ? 1 : 0));
+      diff = Math.max(0, nextMilestone.getTime() - now.getTime());
+    }
+
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+    const minutes = Math.floor((diff / (1000 * 60)) % 60);
+    const seconds = Math.floor((diff / 1000) % 60);
+
+    cdDays.innerText = String(days).padStart(2, '0');
+    cdHours.innerText = String(hours).padStart(2, '0');
+    cdMinutes.innerText = String(minutes).padStart(2, '0');
+    cdSeconds.innerText = String(seconds).padStart(2, '0');
+  }
+
+  updateCountdown();
+  setInterval(updateCountdown, 1000);
+}
+
+function initPetals() {
+  const toggleBtn = document.getElementById('petals-toggle-btn');
+  const savedState = localStorage.getItem('birthday_petals_disabled');
+  if (savedState === 'true') {
+    document.body.classList.add('petals-disabled');
+    if (toggleBtn) {
+      toggleBtn.innerHTML = '<span class="petal-icon">🥀</span><span class="petal-toggle-text">Petals: Off</span>';
+    }
+  }
+
+  if (toggleBtn) {
+    toggleBtn.addEventListener('click', () => {
+      const isNowDisabled = document.body.classList.toggle('petals-disabled');
+      localStorage.setItem('birthday_petals_disabled', isNowDisabled ? 'true' : 'false');
+      if (isNowDisabled) {
+        toggleBtn.innerHTML = '<span class="petal-icon">🥀</span><span class="petal-toggle-text">Petals: Off</span>';
+        showToast('Falling rose petals paused');
+      } else {
+        toggleBtn.innerHTML = '<span class="petal-icon">🌸</span><span class="petal-toggle-text">Petals: On</span>';
+        showToast('Falling rose petals active');
+      }
+    });
+  }
 }
 
 // ================= HELPERS =================
 function toggleBookmark(id) {
   if (bookmarkedIds.has(id)) {
     bookmarkedIds.delete(id);
-    showToast('Removed from bookmarks');
+    showToast('Removed from favorites');
   } else {
     bookmarkedIds.add(id);
-    showToast('Product bookmarked');
+    showToast('Added to favorites');
   }
-  localStorage.setItem('eglobe_bookmarks', JSON.stringify([...bookmarkedIds]));
+  localStorage.setItem('birthday_favorites', JSON.stringify([...bookmarkedIds]));
   renderGallery();
 }
 
@@ -520,11 +948,6 @@ function setConnectionStatus(state, message) {
 
   dot.className = `status-indicator-dot ${state}`;
   label.innerText = message;
-}
-
-function formatCurrency(amount, prefix = 'රු') {
-  if (isNaN(amount) || amount === 0) return `${prefix} 0.00`;
-  return `${prefix} ${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 function stripHtml(html) {
@@ -538,11 +961,13 @@ function renderOfflineState() {
   if (!container) return;
   container.innerHTML = `
     <div class="offline-warning-box">
-      <div class="offline-icon">⚠️</div>
-      <h3>WordPress Backend is Offline</h3>
-      <p>The frontend is attempting to connect to <strong>http://localhost:10004</strong> (LocalWP).</p>
-      <p>Please open <strong>Local</strong> and ensure your site <em>Eglobe</em> is started.</p>
-      <button onclick="loadBackendData()" class="btn btn-primary" style="margin-top:14px;">Retry Connection</button>
+      <div class="offline-icon">📷</div>
+      <h3>Birthday Archive Offline</h3>
+      <p>Could not connect to the internal archive at <strong>/api/products</strong>.</p>
+      <div style="display: flex; gap: 0.75rem; justify-content: center; margin-top: 14px;">
+        <button onclick="loadBackendData()" class="btn btn-primary">Retry Connection</button>
+        <a href="/admin" class="btn btn-secondary">Open Studio Admin</a>
+      </div>
     </div>
   `;
 }
@@ -559,4 +984,14 @@ function showToast(msg) {
   toastTimeout = setTimeout(() => {
     toast.classList.remove('show');
   }, 3200);
+}
+
+function escapeHtml(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }

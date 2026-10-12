@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Admin Studio | 21st Birthday Photo Archive</title>
+  <meta name="description" content="Administrative curation panel to manage Raveesha's 21st birthday photoshoot albums, portraits, and memories.">
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="admin.css">
+</head>
+<body class="admin-body">
+  <!-- Toast Notification -->
+  <div id="toast" class="toast-notification" aria-live="polite">
+    <span id="toast-message">Notification</span>
+  </div>
+
+  <!-- ================= 1. LOGIN SCREEN ================= -->
+  <div id="login-section" class="login-container">
+    <div class="login-card">
+      <div class="login-header">
+        <div class="admin-logo-mark" aria-hidden="true">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+            <circle cx="12" cy="13" r="4"/>
+          </svg>
+        </div>
+        <h1 class="login-title">Studio Admin</h1>
+        <p class="login-desc">Sign in to curate, upload, and organize Raveesha's 21st birthday photo archive.</p>
+      </div>
+
+      <form id="login-form" class="login-form">
+        <div id="login-error" class="login-error-alert" style="display: none;"></div>
+
+        <div class="form-group">
+          <label for="login-username" class="form-label">Username</label>
+          <input type="text" id="login-username" class="form-input" placeholder="Enter username" autocomplete="username" required autofocus>
+        </div>
+
+        <div class="form-group">
+          <label for="login-password" class="form-label">Password</label>
+          <div class="password-input-wrapper">
+            <input type="password" id="login-password" class="form-input" placeholder="Enter password" autocomplete="current-password" required>
+            <button type="button" id="toggle-password-btn" class="password-toggle-btn" title="Show password" aria-label="Toggle password visibility">
+              <svg class="password-eye-svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                <circle cx="12" cy="12" r="3"></circle>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <button type="submit" id="login-submit-btn" class="btn btn-primary login-btn">
+          <span>Sign In to Studio</span>
+        </button>
+      </form>
+
+      <div class="login-footer">
+        <a href="/" class="back-to-store-link">← Return to 21st Birthday Photo Gallery</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= 2. DASHBOARD SCREEN ================= -->
+  <div id="dashboard-section" class="dashboard-container" style="display: none;">
+    <!-- Top Admin Header -->
+    <header class="admin-header">
+      <div class="admin-header-left">
+        <div class="brand-logo">
+          <div class="logo-mark" aria-hidden="true">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+              <circle cx="12" cy="13" r="4"/>
+            </svg>
+          </div>
+          <div class="logo-text">
+            <span class="logo-title">21st Birthday Archive</span>
+            <span class="logo-sub">Studio Curation</span>
+          </div>
+        </div>
+        <div class="admin-user-badge">
+          <span class="status-indicator-dot online"></span>
+          <span id="current-user-name">admin</span>
+        </div>
+      </div>
+
+      <div class="admin-header-right">
+        <a href="/" target="_blank" class="nav-btn ghost-nav-btn" title="Open gallery in new tab">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+            <polyline points="15 3 21 3 21 9"/>
+            <line x1="10" y1="14" x2="21" y2="3"/>
+          </svg>
+          <span>View Public Gallery</span>
+        </a>
+
+        <button id="logout-btn" class="nav-btn ghost-nav-btn text-danger" title="Logout of admin">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+            <polyline points="16 17 21 12 16 7"/>
+            <line x1="21" y1="12" x2="9" y2="12"/>
+          </svg>
+          <span>Log Out</span>
+        </button>
+      </div>
+    </header>
+
+    <main class="admin-main">
+      <!-- Quick Stats Strip -->
+      <section class="admin-stats-grid">
+        <div class="stat-card">
+          <span class="stat-label">Total Photos</span>
+          <span class="stat-value" id="stat-products-count">0</span>
+          <span class="stat-desc">Captured in archive</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">Photo Albums</span>
+          <span class="stat-value" id="stat-categories-count">0</span>
+          <span class="stat-desc">Story collections</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">Featured Milestones</span>
+          <span class="stat-value" id="stat-featured-count">0</span>
+          <span class="stat-desc">Cover photo highlights</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">Shoot Locations</span>
+          <span class="stat-value" id="stat-locations-count">3</span>
+          <span class="stat-desc">Studio, Conservatory & Gardens</span>
+        </div>
+      </section>
+
+      <!-- Photos Management Section -->
+      <section class="admin-content-card">
+        <div class="content-card-header">
+          <div class="header-titles">
+            <h2 class="section-title">Photoshoot Gallery Inventory</h2>
+            <p class="section-subtitle">Manage, upload, and organize photos served directly to your public gallery.</p>
+          </div>
+
+          <div class="header-buttons">
+            <button id="open-category-modal-btn" class="btn btn-secondary">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+                <rect x="3" y="3" width="7" height="7"/>
+                <rect x="14" y="3" width="7" height="7"/>
+                <rect x="14" y="14" width="7" height="7"/>
+                <rect x="3" y="14" width="7" height="7"/>
+              </svg>
+              <span>Manage Albums</span>
+            </button>
+
+            <button id="open-add-product-btn" class="btn btn-primary">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+                <line x1="12" y1="5" x2="12" y2="19"/>
+                <line x1="5" y1="12" x2="19" y2="12"/>
+              </svg>
+              <span>Upload / Add Photo</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Toolbar Filters -->
+        <div class="admin-toolbar">
+          <div class="search-input-box">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="admin-search-input" placeholder="Search by photo title, location, camera, or album...">
+          </div>
+
+          <div class="admin-filter-group">
+            <select id="admin-category-filter" class="custom-select">
+              <option value="all">All Albums</option>
+            </select>
+
+            <select id="admin-sort-filter" class="custom-select">
+              <option value="newest">Newest First</option>
+              <option value="featured">Featured First</option>
+              <option value="title">Alphabetical (A-Z)</option>
+              <option value="oldest">Oldest First</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Photos Table -->
+        <div class="table-responsive">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th style="width: 70px;">Photo</th>
+                <th>Moment & Memory Details</th>
+                <th>Album Collection</th>
+                <th>Date & Location</th>
+                <th>Status</th>
+                <th style="width: 140px; text-align: right;">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="products-table-body">
+              <tr>
+                <td colspan="6" class="table-loading">Loading photos from archive...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- ================= 3. ADD / EDIT PHOTO MODAL ================= -->
+  <div id="product-modal" class="modal-overlay" aria-hidden="true" role="dialog">
+    <div class="modal-backdrop" id="product-modal-backdrop"></div>
+    <div class="modal-card admin-modal-card">
+      <div class="modal-header">
+        <div class="modal-header-titles">
+          <h2 id="product-modal-title" class="modal-title">Upload Birthday Photo</h2>
+        </div>
+        <button id="close-product-modal" class="modal-close-btn" aria-label="Close modal">✕</button>
+      </div>
+
+      <form id="product-form" class="product-form">
+        <input type="hidden" id="product-edit-id">
+
+        <div class="form-grid-2">
+          <div class="form-group">
+            <label for="prod-name" class="form-label">Photo Title / Moment Name <span class="required">*</span></label>
+            <input type="text" id="prod-name" class="form-input" placeholder="e.g. Sunset Golden Hour Silhouette" required>
+          </div>
+
+          <div class="form-group">
+            <label for="prod-category" class="form-label">Album Collection <span class="required">*</span></label>
+            <input type="text" id="prod-category" list="categories-datalist" class="form-input" placeholder="Select or type new album name" required>
+            <datalist id="categories-datalist"></datalist>
+          </div>
+        </div>
+
+        <div class="form-grid-2">
+          <div class="form-group">
+            <label for="prod-date" class="form-label">Shot Date</label>
+            <input type="text" id="prod-date" class="form-input" placeholder="e.g. October 9, 2026">
+          </div>
+
+          <div class="form-group">
+            <label for="prod-location" class="form-label">Location / Setting</label>
+            <input type="text" id="prod-location" class="form-input" placeholder="e.g. Rosewood Botanical Gardens">
+          </div>
+        </div>
+
+        <div class="form-grid-2">
+          <div class="form-group checkbox-group">
+            <label class="custom-checkbox-label">
+              <input type="checkbox" id="prod-published" checked>
+              <span class="checkbox-custom"></span>
+              <span class="checkbox-text">Publish in Public Photo Gallery</span>
+            </label>
+          </div>
+
+          <div class="form-group checkbox-group">
+            <label class="custom-checkbox-label">
+              <input type="checkbox" id="prod-featured">
+              <span class="checkbox-custom"></span>
+              <span class="checkbox-text">Feature as Milestone Highlight</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Image Upload & URL Section -->
+        <div class="form-group">
+          <label class="form-label">Photo File <span class="required">*</span></label>
+          <div class="image-uploader-wrapper">
+            <div id="admin-drop-zone" class="admin-drop-zone">
+              <input type="file" id="prod-file-input" accept="image/*" class="file-input-hidden">
+              <div class="drop-zone-content">
+                <span class="upload-icon">📷</span>
+                <span>Click or drag & drop photo file to upload</span>
+                <span class="upload-subtext">JPG, PNG, WEBP (Saved directly to backend uploads/)</span>
+              </div>
+            </div>
+
+            <div class="image-preview-box" id="image-preview-box">
+              <img id="image-preview-img" src="assets/portrait.jpg" alt="Preview">
+            </div>
+          </div>
+
+          <div class="or-separator"><span>OR ENTER IMAGE PATH / URL</span></div>
+          <input type="text" id="prod-image-url" class="form-input" placeholder="assets/portrait.jpg or uploads/..." value="assets/portrait.jpg">
+        </div>
+
+        <div class="form-group">
+          <label for="prod-short-desc" class="form-label">Memory Highlight (Caption)</label>
+          <input type="text" id="prod-short-desc" class="form-input" placeholder="One-line heartfelt memory or caption...">
+        </div>
+
+        <div class="form-group">
+          <label for="prod-desc" class="form-label">Full Story / Journal Note</label>
+          <textarea id="prod-desc" class="form-textarea" rows="3" placeholder="Detailed story, thoughts, and background of this moment..."></textarea>
+        </div>
+
+        <!-- Dynamic Technical Specifications Builder -->
+        <div class="form-group">
+          <div class="attributes-header-row">
+            <label class="form-label">Shot Details & Equipment (Camera, Lens, Lighting, Mood)</label>
+            <button type="button" id="add-attribute-btn" class="btn btn-secondary btn-sm">+ Add Detail Field</button>
+          </div>
+          <div id="attributes-list" class="attributes-list-container">
+            <!-- Dynamically populated key/value inputs -->
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" id="cancel-product-modal-btn" class="btn btn-secondary">Cancel</button>
+          <button type="submit" id="save-product-btn" class="btn btn-primary">
+            <span>Save Photo to Archive</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ================= 4. MANAGE ALBUMS MODAL ================= -->
+  <div id="category-modal" class="modal-overlay" aria-hidden="true" role="dialog">
+    <div class="modal-backdrop" id="category-modal-backdrop"></div>
+    <div class="modal-card" style="max-width: 480px;">
+      <div class="modal-header">
+        <div class="modal-header-titles">
+          <h2 class="modal-title">Manage Photo Albums</h2>
+        </div>
+        <button id="close-category-modal" class="modal-close-btn" aria-label="Close modal">✕</button>
+      </div>
+
+      <div class="category-manager-body">
+        <form id="add-category-form" class="add-category-row">
+          <input type="text" id="new-category-name" class="form-input" placeholder="New album name (e.g. Golden Hour)..." required>
+          <button type="submit" class="btn btn-primary">Add</button>
+        </form>
+
+        <div class="category-list" id="category-list-body">
+          <!-- Populated via JS -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="admin.js"></script>
+</body>
+</html>
