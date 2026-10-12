@@ -1021,7 +1021,10 @@ function setupReelStripAutoRotation(targetReel) {
     touchResumeTimer = null;
   }
 
-  const speed = 0.65; // Gentle, luxurious auto-rotation pace
+  // Optimized rotation speed with subpixel accumulator for mobile browsers
+  const isMobile = window.innerWidth <= 768;
+  const speed = isMobile ? 0.95 : 0.75; // Clean, visible auto-rotation on mobile & desktop
+  let accumulatedScroll = reel.scrollLeft || 0;
   let isDown = false;
   let isTouchActive = false;
   let hasMoved = false;
@@ -1036,16 +1039,26 @@ function setupReelStripAutoRotation(targetReel) {
     if (touchResumeTimer) clearTimeout(touchResumeTimer);
   }
 
-  function resumeRotation(delay = 1800) {
+  function resumeRotation(delay = 1200) {
     if (touchResumeTimer) clearTimeout(touchResumeTimer);
     touchResumeTimer = setTimeout(() => {
       isReelPaused = false;
+      accumulatedScroll = reel.scrollLeft;
     }, delay);
   }
 
-  // Hover pauses on desktop mouse
-  reel.onmouseenter = () => { pauseRotation(); };
-  reel.onmouseleave = () => { if (!isDown && !isTouchActive) isReelPaused = false; };
+  // Hover pauses ONLY on desktop mouse devices (never on mobile touch screens)
+  reel.onmouseenter = () => {
+    if (window.matchMedia && window.matchMedia('(hover: hover) and (pointer: fine)').matches) {
+      pauseRotation();
+    }
+  };
+  reel.onmouseleave = () => {
+    if (!isDown && !isTouchActive) {
+      isReelPaused = false;
+      accumulatedScroll = reel.scrollLeft;
+    }
+  };
 
   // Infinite wrap-around calculation
   function wrapLoop() {
@@ -1056,20 +1069,28 @@ function setupReelStripAutoRotation(targetReel) {
 
     if (reel.scrollLeft >= oneThird * 2) {
       reel.scrollLeft -= oneThird;
+      accumulatedScroll = reel.scrollLeft;
     } else if (reel.scrollLeft <= 10) {
       reel.scrollLeft += oneThird;
+      accumulatedScroll = reel.scrollLeft;
     }
   }
 
   // Ensure initial scroll position starts in the middle set (Set B)
   requestAnimationFrame(() => {
     if (reel.scrollWidth > reel.clientWidth && reel.scrollLeft < 10) {
-      reel.scrollLeft = reel.scrollWidth / 3;
+      reel.scrollLeft = Math.round(reel.scrollWidth / 3);
+      accumulatedScroll = reel.scrollLeft;
     }
   });
 
-  // Attach wrapLoop on native scroll event so touch momentum, trackpad, and button scrolls loop seamlessly
-  reel.onscroll = wrapLoop;
+  // Attach wrapLoop on native scroll event
+  reel.onscroll = () => {
+    if (isDown || isTouchActive) {
+      accumulatedScroll = reel.scrollLeft;
+    }
+    wrapLoop();
+  };
 
   // --- DESKTOP MOUSE DRAG ---
   reel.onmousedown = (e) => {
@@ -1081,6 +1102,7 @@ function setupReelStripAutoRotation(targetReel) {
     reel.classList.add('is-dragging');
     startX = e.pageX;
     scrollStart = reel.scrollLeft;
+    accumulatedScroll = reel.scrollLeft;
   };
 
   const onMouseMove = (e) => {
@@ -1091,6 +1113,7 @@ function setupReelStripAutoRotation(targetReel) {
       suppressClick = true;
     }
     reel.scrollLeft = scrollStart - dx * 1.3;
+    accumulatedScroll = reel.scrollLeft;
     wrapLoop();
   };
 
@@ -1098,6 +1121,7 @@ function setupReelStripAutoRotation(targetReel) {
     if (!isDown) return;
     isDown = false;
     reel.classList.remove('is-dragging');
+    accumulatedScroll = reel.scrollLeft;
     setTimeout(() => {
       suppressClick = false;
       hasMoved = false;
@@ -1120,6 +1144,7 @@ function setupReelStripAutoRotation(targetReel) {
     startX = e.touches[0].clientX;
     startY = e.touches[0].clientY;
     scrollStart = reel.scrollLeft;
+    accumulatedScroll = reel.scrollLeft;
     pauseRotation();
   };
 
@@ -1147,6 +1172,7 @@ function setupReelStripAutoRotation(targetReel) {
       hasMoved = true;
       suppressClick = true;
       reel.scrollLeft = scrollStart - dx * 1.3;
+      accumulatedScroll = reel.scrollLeft;
       wrapLoop();
     }
   };
@@ -1155,11 +1181,12 @@ function setupReelStripAutoRotation(targetReel) {
     if (!isTouchActive) return;
     isTouchActive = false;
     isHorizontalDrag = null;
+    accumulatedScroll = reel.scrollLeft;
     setTimeout(() => {
       suppressClick = false;
       hasMoved = false;
     }, 250);
-    resumeRotation(2000);
+    resumeRotation(1200);
   };
 
   reel.ontouchend = endTouch;
@@ -1205,7 +1232,8 @@ function setupReelStripAutoRotation(targetReel) {
       pauseRotation();
       const scrollStep = reel.clientWidth > 480 ? 320 : 220;
       reel.scrollBy({ left: -scrollStep, behavior: 'smooth' });
-      resumeRotation(2500);
+      accumulatedScroll = reel.scrollLeft - scrollStep;
+      resumeRotation(2000);
     };
   }
   if (nextBtn) {
@@ -1214,15 +1242,19 @@ function setupReelStripAutoRotation(targetReel) {
       pauseRotation();
       const scrollStep = reel.clientWidth > 480 ? 320 : 220;
       reel.scrollBy({ left: scrollStep, behavior: 'smooth' });
-      resumeRotation(2500);
+      accumulatedScroll = reel.scrollLeft + scrollStep;
+      resumeRotation(2000);
     };
   }
 
-  // --- 60FPS CONTINUOUS ROTATION ---
+  // --- 60FPS CONTINUOUS ROTATION (FLUID MOBILE & DESKTOP) ---
   function step() {
     if (!isReelPaused && !isDown && !isTouchActive) {
-      reel.scrollLeft += speed;
+      accumulatedScroll += speed;
+      reel.scrollLeft = Math.round(accumulatedScroll);
       wrapLoop();
+    } else {
+      accumulatedScroll = reel.scrollLeft;
     }
     reelAnimFrame = requestAnimationFrame(step);
   }
