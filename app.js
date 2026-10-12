@@ -75,8 +75,11 @@ function applyHeroSettings(settings) {
 
   // Story Greeting & Polaroid Photo
   const storyImg = document.getElementById('story-polaroid-img');
-  if (storyImg && (settings.storyImage || settings.heroImage)) {
-    storyImg.src = settings.storyImage || settings.heroImage;
+  if (storyImg) {
+    const targetStoryImg = settings.storyImage || settings.heroImage || 'assets/portrait.jpg';
+    if (targetStoryImg) {
+      storyImg.src = targetStoryImg;
+    }
   }
 
   const storyHeading = document.getElementById('story-heading');
@@ -100,32 +103,21 @@ async function fetchSettings() {
     const res = await fetch(SETTINGS_API, { cache: 'no-store' });
     if (res.ok) {
       const data = await res.json();
-      
-      const localTime = new Date(localStorage.getItem('birthday_settings_updated_at') || 0).getTime();
-      const serverTime = new Date(data.updatedAt || 0).getTime();
-
-      // If local cache is newer than server response, keep local and re-hydrate server
-      if (localTime > serverTime && localTime > 0) {
-        const localSettings = JSON.parse(localStorage.getItem('birthday_settings_cache') || '{}');
-        if (localSettings && localSettings.heroImage) {
-          applyHeroSettings(localSettings);
-          fetch('/api/sync', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ settings: localSettings })
-          }).catch(() => {});
-          return;
-        }
-      }
-
       applyHeroSettings(data);
       try {
         localStorage.setItem('birthday_settings_cache', JSON.stringify(data));
         localStorage.setItem('birthday_settings_updated_at', data.updatedAt || new Date().toISOString());
       } catch (_) {}
+    } else {
+      const cached = localStorage.getItem('birthday_settings_cache');
+      if (cached) applyHeroSettings(JSON.parse(cached));
     }
   } catch (err) {
     console.warn('Could not load dynamic settings:', err.message);
+    try {
+      const cached = localStorage.getItem('birthday_settings_cache');
+      if (cached) applyHeroSettings(JSON.parse(cached));
+    } catch (_) {}
   }
 }
 

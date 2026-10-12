@@ -1279,4 +1279,110 @@
   filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.16));
 }
 
+/* Homepage Key Photos Dashboard Banner */
+.admin-featured-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1.25rem;
+  margin-bottom: 2rem;
+}
+
+.featured-strip-card {
+  background: #ffffff;
+  border: 1px solid var(--border-medium, #e8c7cf);
+  border-radius: var(--radius-md, 14px);
+  padding: 1.25rem 1.5rem;
+  box-shadow: 0 4px 18px rgba(45, 24, 34, 0.05);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.featured-strip-card.highlight-story-card {
+  border: 2px solid var(--pink-primary, #de4b75);
+  background: linear-gradient(135deg, #ffffff 0%, #fffbfd 100%);
+  box-shadow: 0 6px 24px rgba(222, 75, 117, 0.12);
+}
+
+.featured-strip-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(222, 75, 117, 0.14);
+}
+
+.featured-strip-preview {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+.polaroid-mini-preview {
+  width: 90px;
+  height: 110px;
+  background: #ffffff;
+  padding: 6px 6px 18px 6px;
+  border-radius: 4px;
+  box-shadow: 0 4px 14px rgba(45, 24, 34, 0.16);
+  border: 1px solid rgba(222, 75, 117, 0.2);
+  transform: rotate(2.5deg);
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.polaroid-mini-preview img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  display: block;
+  border-radius: 2px;
+}
+
+.arch-mini-preview {
+  width: 80px;
+  height: 105px;
+  border-radius: 40px 40px 8px 8px;
+  overflow: hidden;
+  border: 2px solid #ffccd9;
+  box-shadow: 0 4px 14px rgba(222, 75, 117, 0.16);
+  flex-shrink: 0;
+  background: #fff0f4;
+}
+
+.arch-mini-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.featured-strip-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.featured-strip-badge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 2px 8px;
+  border-radius: 20px;
+  background: #fef0f4;
+  color: var(--pink-primary, #de4b75);
+  margin-bottom: 4px;
+}
+
+.featured-strip-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--ink-primary, #2d1822);
+  margin: 2px 0 4px 0;
+}
+
+.featured-strip-desc {
+  font-size: 0.8125rem;
+  color: var(--ink-muted, #916f7c);
+  line-height: 1.4;
+  margin: 0;
+}
+
 

@@ -380,6 +380,16 @@ function setupEventListeners() {
   }
   setupStoryImageUploader();
 
+  // Dashboard Featured Cards Direct Action Buttons
+  const dashOpenStoryBtn = document.getElementById('dash-open-story-btn');
+  if (dashOpenStoryBtn) {
+    dashOpenStoryBtn.addEventListener('click', openStorySettingsModal);
+  }
+  const dashOpenHeroBtn = document.getElementById('dash-open-hero-btn');
+  if (dashOpenHeroBtn) {
+    dashOpenHeroBtn.addEventListener('click', openHeroSettingsModal);
+  }
+
   // Esc key close modals
   window.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
@@ -423,6 +433,16 @@ async function loadDashboardData() {
   await fetchCategories();
   await fetchProducts();
   await fetchHeroSettings();
+  checkUrlDirectActions();
+}
+
+function checkUrlDirectActions() {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('edit') === 'story' || window.location.hash === '#story-settings') {
+    setTimeout(() => {
+      openStorySettingsModal();
+    }, 150);
+  }
 }
 
 async function fetchCategories() {
@@ -987,6 +1007,9 @@ function populateHeroSettingsForm() {
   if (heroSubtitleInput) heroSubtitleInput.value = currentHeroSettings.heroSubtitle || 'Milestone Portrait';
   if (heroNameInput) heroNameInput.value = currentHeroSettings.heroName || 'RAVEESHA';
   if (heroDateInput) heroDateInput.value = currentHeroSettings.heroDate || 'OCTOBER 2026';
+
+  const dashHeroImg = document.getElementById('dash-hero-img');
+  if (dashHeroImg) dashHeroImg.src = currentHeroSettings.heroImage || 'assets/portrait.jpg';
 }
 
 function openHeroSettingsModal() {
@@ -1011,6 +1034,9 @@ function populateStorySettingsForm() {
   if (storyHeadingInput) storyHeadingInput.value = currentHeroSettings.storyHeading || "Hi, I'm Raveesha";
   if (storyTextInput) storyTextInput.value = currentHeroSettings.storyText || "Stepping into 21 surrounded by love, golden sunlight, and sweet celebration. This photoshoot captures the laughter, the elegance, and the wonderful memories of entering adulthood and celebrating this milestone chapter. Thank you for celebrating with me!";
   if (storyNoteInput) storyNoteInput.value = currentHeroSettings.storyNote || "Thanks for celebrating Chapter 21 with me!";
+
+  const dashStoryImg = document.getElementById('dash-story-img');
+  if (dashStoryImg) dashStoryImg.src = storyImg;
 }
 
 function openStorySettingsModal() {
