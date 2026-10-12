@@ -278,22 +278,22 @@
         <div class="form-group">
           <label class="form-label">Photo File <span class="required">*</span></label>
           <div class="image-uploader-wrapper">
-            <div id="admin-drop-zone" class="admin-drop-zone">
-              <input type="file" id="prod-file-input" accept="image/*" class="file-input-hidden">
+            <div id="admin-drop-zone" class="admin-drop-zone" style="cursor: pointer;">
+              <input type="file" id="prod-file-input" accept="image/*" class="file-input-hidden" style="display: none;">
               <div class="drop-zone-content">
                 <span class="upload-icon">📷</span>
-                <span>Click or drag & drop photo file to upload</span>
-                <span class="upload-subtext">JPG, PNG, WEBP (Saved directly to backend uploads/)</span>
+                <span style="font-weight: 500;">Click or drag & drop photo file to upload</span>
+                <span class="upload-subtext">JPG, PNG, WEBP</span>
               </div>
             </div>
 
             <div class="image-preview-box" id="image-preview-box">
-              <img id="image-preview-img" src="assets/portrait.jpg" alt="Preview">
+              <img id="image-preview-img" src="/assets/portrait.jpg" alt="Preview" onerror="this.onerror=null; this.src='/assets/portrait.jpg';">
             </div>
           </div>
 
           <div class="or-separator"><span>OR ENTER IMAGE PATH / URL</span></div>
-          <input type="text" id="prod-image-url" class="form-input" placeholder="assets/portrait.jpg or uploads/..." value="assets/portrait.jpg">
+          <input type="text" id="prod-image-url" class="form-input" placeholder="/assets/portrait.jpg or https://..." value="/assets/portrait.jpg">
         </div>
 
         <div class="form-group">

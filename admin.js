@@ -462,7 +462,7 @@ function renderProductsTable(prods) {
   }
 
   productsTableBody.innerHTML = prods.map(prod => {
-    const imgSrc = prod.image || (prod.images && prod.images[0] ? prod.images[0].src : 'assets/portrait.jpg');
+    const imgSrc = prod.image || (prod.images && prod.images[0] ? prod.images[0].src : '/assets/portrait.jpg');
     const isFeatured = Boolean(prod.featured);
     const isPublished = prod.published !== false;
     const dateStr = prod.date || 'October 9, 2026';
@@ -471,7 +471,7 @@ function renderProductsTable(prods) {
     return `
       <tr data-id="${prod.id}">
         <td>
-          <img src="${escapeHtml(imgSrc)}" alt="${escapeHtml(prod.name)}" class="table-thumb" onerror="this.src='assets/portrait.jpg'">
+          <img src="${escapeHtml(imgSrc)}" alt="${escapeHtml(prod.name)}" class="table-thumb" onerror="this.onerror=null; this.src='/assets/portrait.jpg';">
         </td>
         <td>
           <div class="product-cell-details">
@@ -531,8 +531,8 @@ function openAddProductModal() {
   productForm.reset();
   productEditId.value = '';
   productModalTitle.textContent = 'Upload Birthday Photo';
-  imagePreviewImg.src = 'assets/portrait.jpg';
-  prodImageUrlInput.value = 'assets/portrait.jpg';
+  imagePreviewImg.src = '/assets/portrait.jpg';
+  prodImageUrlInput.value = '/assets/portrait.jpg';
   prodDateInput.value = 'October 9, 2026';
   prodLocationInput.value = 'Rosewood Botanical Gardens';
   prodPublishedCheckbox.checked = true;
@@ -567,7 +567,7 @@ function openEditProductModal(id) {
   prodShortDescInput.value = prod.shortDescription || '';
   prodDescInput.value = prod.description || '';
 
-  const imgSrc = prod.image || (prod.images && prod.images[0] ? prod.images[0].src : 'assets/portrait.jpg');
+  const imgSrc = prod.image || (prod.images && prod.images[0] ? prod.images[0].src : '/assets/portrait.jpg');
   prodImageUrlInput.value = imgSrc;
   imagePreviewImg.src = imgSrc;
 
@@ -702,11 +702,18 @@ function setupImageUploader() {
   if (prodImageUrlInput && imagePreviewImg) {
     prodImageUrlInput.addEventListener('input', () => {
       const url = prodImageUrlInput.value.trim();
-      imagePreviewImg.src = url || 'assets/portrait.jpg';
+      imagePreviewImg.src = url || '/assets/portrait.jpg';
     });
   }
 
   if (adminDropZone && prodFileInput) {
+    // Click anywhere on dropzone box opens file picker
+    adminDropZone.addEventListener('click', (e) => {
+      if (e.target !== prodFileInput) {
+        prodFileInput.click();
+      }
+    });
+
     adminDropZone.addEventListener('dragover', (e) => {
       e.preventDefault();
       adminDropZone.classList.add('dragover');
@@ -719,7 +726,7 @@ function setupImageUploader() {
     adminDropZone.addEventListener('drop', (e) => {
       e.preventDefault();
       adminDropZone.classList.remove('dragover');
-      if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]) {
         uploadImageFile(e.dataTransfer.files[0]);
       }
     });
@@ -738,12 +745,19 @@ function uploadImageFile(file) {
     return;
   }
 
-  showToast(`Uploading ${file.name}...`);
+  showToast(`Loading ${file.name}...`);
   const reader = new FileReader();
 
   reader.onload = async (e) => {
     const dataUrl = e.target.result;
-    if (imagePreviewImg) imagePreviewImg.src = dataUrl;
+
+    // Immediately show the image in preview and populate input
+    if (imagePreviewImg) {
+      imagePreviewImg.src = dataUrl;
+    }
+    if (prodImageUrlInput) {
+      prodImageUrlInput.value = dataUrl;
+    }
 
     try {
       const res = await apiRequest('/api/upload', {
@@ -756,14 +770,20 @@ function uploadImageFile(file) {
 
       const data = await res.json();
       if (res.ok && data.success) {
-        prodImageUrlInput.value = data.url;
-        imagePreviewImg.src = data.url;
-        showToast('Photo uploaded and saved to archive!');
+        if (prodImageUrlInput && data.url) {
+          prodImageUrlInput.value = data.url;
+        }
+        if (imagePreviewImg && data.url) {
+          imagePreviewImg.src = data.url;
+        }
+        showToast('Photo uploaded and ready!');
       } else {
-        alert(`Upload error: ${data.error || 'Server error'}`);
+        // Fallback: dataUrl is already set and ready to be saved with product!
+        showToast('Photo loaded!');
       }
     } catch (err) {
-      alert(`Upload request failed: ${err.message}`);
+      console.warn('Upload API note:', err);
+      showToast('Photo loaded!');
     }
   };
 

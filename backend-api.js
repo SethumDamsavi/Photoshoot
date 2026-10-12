@@ -440,23 +440,20 @@ export async function handleApiRequest(req, res) {
         .replace(/[^a-zA-Z0-9_-]/g, '_')
         .substring(0, 30);
       const safeFilename = `${Date.now()}-${cleanName}.${ext}`;
+      const filePath = path.join(UPLOADS_DIR, safeFilename);
+
+      // Save file locally if filesystem permits
       try {
         if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true });
         fs.writeFileSync(filePath, buffer);
-        return sendJSON(200, {
-          success: true,
-          url: `uploads/${safeFilename}`,
-          filename: safeFilename
-        });
-      } catch (writeErr) {
-        // Fallback for serverless read-only filesystems: return dataUrl directly
-        console.warn('Upload saving locally skipped in serverless environment, using dataUrl fallback');
-        return sendJSON(200, {
-          success: true,
-          url: dataUrl,
-          filename: safeFilename
-        });
-      }
+      } catch (_) {}
+
+      // Always return dataUrl so preview and saved photo render reliably everywhere
+      return sendJSON(200, {
+        success: true,
+        url: dataUrl,
+        filename: safeFilename
+      });
     } catch (err) {
       console.error('Upload error:', err);
       return sendJSON(500, { error: 'Failed to process image file' });
