@@ -537,13 +537,6 @@ function openAddProductModal() {
   prodLocationInput.value = 'Rosewood Botanical Gardens';
   prodPublishedCheckbox.checked = true;
   prodFeaturedCheckbox.checked = false;
-  attributesList.innerHTML = '';
-
-  // Default photography metadata
-  addAttributeRow('Camera', 'Sony Alpha A7 IV');
-  addAttributeRow('Lens', '85mm f/1.4 GM');
-  addAttributeRow('Lighting', 'Natural Golden Hour');
-  addAttributeRow('Mood', 'Joyful, Serene, Warm');
 
   productModal.classList.add('open');
   productModal.setAttribute('aria-hidden', 'false');
@@ -571,18 +564,6 @@ function openEditProductModal(id) {
   prodImageUrlInput.value = imgSrc;
   imagePreviewImg.src = imgSrc;
 
-  // Attributes / Shot Details
-  attributesList.innerHTML = '';
-  if (Array.isArray(prod.attributes) && prod.attributes.length > 0) {
-    prod.attributes.forEach(attr => {
-      const val = attr.terms && attr.terms[0] ? attr.terms[0].name : (attr.value || '');
-      addAttributeRow(attr.name || '', val);
-    });
-  } else {
-    addAttributeRow('Camera', 'Sony Alpha A7 IV');
-    addAttributeRow('Lens', '85mm f/1.4 GM');
-  }
-
   productModal.classList.add('open');
   productModal.setAttribute('aria-hidden', 'false');
   prodNameInput.focus();
@@ -594,11 +575,12 @@ function closeProductModal() {
 }
 
 function addAttributeRow(name = '', value = '') {
+  if (!attributesList) return;
   const row = document.createElement('div');
   row.className = 'attr-row';
   row.innerHTML = `
-    <input type="text" class="form-input attr-key" placeholder="Field (e.g. Camera, Lens, Mood)" value="${escapeHtml(name)}">
-    <input type="text" class="form-input attr-val" placeholder="Value (e.g. 85mm f/1.4, Golden Hour)" value="${escapeHtml(value)}">
+    <input type="text" class="form-input attr-key" placeholder="Field" value="${escapeHtml(name)}">
+    <input type="text" class="form-input attr-val" placeholder="Value" value="${escapeHtml(value)}">
     <button type="button" class="attr-delete-btn" title="Remove detail row">✕</button>
   `;
 
@@ -614,20 +596,8 @@ async function handleProductFormSubmit(e) {
 
   const id = productEditId.value ? parseInt(productEditId.value, 10) : null;
   const isEditing = Boolean(id);
-
-  // Collect attributes
-  const attributes = [];
-  attributesList.querySelectorAll('.attr-row').forEach(row => {
-    const key = row.querySelector('.attr-key').value.trim();
-    const val = row.querySelector('.attr-val').value.trim();
-    if (key && val) {
-      attributes.push({
-        id: key.toLowerCase().replace(/[^a-z0-9]/g, '_'),
-        name: key,
-        terms: [{ name: val }]
-      });
-    }
-  });
+  const existingProd = isEditing ? allProducts.find(p => p.id === id) : null;
+  const attributes = existingProd && Array.isArray(existingProd.attributes) ? existingProd.attributes : [];
 
   const payload = {
     name: prodNameInput.value.trim(),
