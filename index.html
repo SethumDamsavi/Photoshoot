@@ -281,25 +281,33 @@
       </div>
 
       <!-- 5-Photo Full-Bleed Highlight Reel (Matching Reference Photo Strip) -->
-      <div id="story-photo-reel-strip" class="story-photo-reel-strip" aria-label="Celebration Highlights Photo Strip">
-        <div class="reel-item" role="button" tabindex="0" onclick="openLightbox(2)"
-          aria-label="View golden hour birthday sunset portrait">
-          <img src="assets/golden_hour.jpg" alt="Golden hour 21st birthday portrait" class="reel-photo">
+      <div class="story-photo-reel-container">
+        <button class="reel-nav-btn reel-nav-prev" id="reel-nav-prev" type="button" aria-label="Previous photos" title="Previous">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+        </button>
+        <div id="story-photo-reel-strip" class="story-photo-reel-strip" aria-label="Celebration Highlights Photo Strip">
+          <div class="reel-item" role="button" tabindex="0" data-photo-id="3" data-photo-index="2"
+            aria-label="View golden hour birthday sunset portrait">
+            <img src="/assets/golden_hour.jpg" alt="Golden hour 21st birthday portrait" class="reel-photo">
+          </div>
+          <div class="reel-item" role="button" tabindex="0" data-photo-id="5" data-photo-index="3" aria-label="View fresh pink and white celebration roses">
+            <img src="/assets/pink_white_roses.jpg" alt="Pink and white celebration garden roses" class="reel-photo">
+          </div>
+          <div class="reel-item" role="button" tabindex="0" data-photo-id="4" data-photo-index="1"
+            aria-label="View shoreline birthday stroll">
+            <img src="/assets/beach_candid_shore.jpg" alt="Shoreline birthday candid stroll" class="reel-photo">
+          </div>
+          <div class="reel-item" role="button" tabindex="0" data-photo-id="2" data-photo-index="4" aria-label="View 21st birthday cake and wishes">
+            <img src="/assets/cake.jpg" alt="21st birthday cake with floral blooms" class="reel-photo">
+          </div>
+          <div class="reel-item" role="button" tabindex="0" data-photo-id="1" data-photo-index="0"
+            aria-label="View seaside 21st birthday celebration sunset">
+            <img src="/assets/beach_birthday_27.jpg" alt="Seaside 21st birthday celebration sunset" class="reel-photo">
+          </div>
         </div>
-        <div class="reel-item" role="button" tabindex="0" onclick="openLightbox(3)" aria-label="View fresh pink and white celebration roses">
-          <img src="assets/pink_white_roses.jpg" alt="Pink and white celebration garden roses" class="reel-photo">
-        </div>
-        <div class="reel-item" role="button" tabindex="0" onclick="openLightbox(1)"
-          aria-label="View shoreline birthday stroll">
-          <img src="assets/beach_candid_shore.jpg" alt="Shoreline birthday candid stroll" class="reel-photo">
-        </div>
-        <div class="reel-item" role="button" tabindex="0" onclick="openLightbox(4)" aria-label="View 21st birthday cake and wishes">
-          <img src="assets/cake.jpg" alt="21st birthday cake with floral blooms" class="reel-photo">
-        </div>
-        <div class="reel-item" role="button" tabindex="0" onclick="openLightbox(0)"
-          aria-label="View seaside 21st birthday celebration sunset">
-          <img src="assets/beach_birthday_27.jpg" alt="Seaside 21st birthday celebration sunset" class="reel-photo">
-        </div>
+        <button class="reel-nav-btn reel-nav-next" id="reel-nav-next" type="button" aria-label="Next photos" title="Next">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+        </button>
       </div>
     </section>
   </main>

@@ -94,6 +94,7 @@ document.addEventListener('DOMContentLoaded', () => {
   } catch (_) {}
 
   setupEventListeners();
+  setupReelStripAutoRotation();
   startCountdownTimer();
   initPetals();
   loadBackendData();
@@ -881,8 +882,23 @@ function setupEventListeners() {
 
 // ================= HIGHLIGHT REEL DYNAMIC BACKEND & ROTATABLE SCROLL =================
 let reelAnimFrame = null;
-let isReelHovered = false;
-let isReelInteracting = false;
+let isReelPaused = false;
+let touchResumeTimer = null;
+
+function openLightboxForPhotoId(photoId) {
+  let idx = filteredProducts.findIndex(p => p.id === photoId);
+  if (idx < 0) {
+    currentCategory = 'all';
+    renderCategoryTabs();
+    renderGallery();
+    idx = filteredProducts.findIndex(p => p.id === photoId);
+  }
+  if (idx >= 0) {
+    openLightbox(idx);
+  } else if (filteredProducts.length > 0) {
+    openLightbox(0);
+  }
+}
 
 function renderHighlightReel() {
   const reel = document.getElementById('story-photo-reel-strip') || document.querySelector('.story-photo-reel-strip');
@@ -891,22 +907,23 @@ function renderHighlightReel() {
   const validPhotos = products.filter(p => p.published !== false);
   if (validPhotos.length === 0) return;
 
-  // Repeat sequence 3 times for completely seamless, infinite wrap-around rotation
-  const repeatCount = 3;
+  // Repeat sequence so there are always at least 15 items for smooth infinite rotation
+  const repeatCount = Math.max(3, Math.ceil(15 / validPhotos.length));
   reel.innerHTML = '';
 
   for (let r = 0; r < repeatCount; r++) {
-    validPhotos.forEach((photo) => {
+    validPhotos.forEach((photo, pIdx) => {
       const globalIndex = products.findIndex(p => p.id === photo.id);
       const item = document.createElement('div');
       item.className = 'reel-item';
       item.setAttribute('role', 'button');
       item.setAttribute('tabindex', '0');
       item.setAttribute('aria-label', `View ${photo.name || '21st Birthday Milestone'}`);
-      item.dataset.photoIndex = String(globalIndex >= 0 ? globalIndex : 0);
+      item.dataset.photoId = String(photo.id);
+      item.dataset.photoIndex = String(globalIndex >= 0 ? globalIndex : pIdx);
 
       const img = document.createElement('img');
-      img.src = photo.image || (photo.images && photo.images[0]?.src) || 'assets/portrait.jpg';
+      img.src = photo.image || (photo.images && photo.images[0]?.src) || '/assets/portrait.jpg';
       img.alt = photo.name || '21st Birthday Milestone photo';
       img.className = 'reel-photo';
       img.loading = 'lazy';
@@ -927,117 +944,211 @@ function setupReelStripAutoRotation(targetReel) {
     cancelAnimationFrame(reelAnimFrame);
     reelAnimFrame = null;
   }
+  if (touchResumeTimer) {
+    clearTimeout(touchResumeTimer);
+    touchResumeTimer = null;
+  }
 
-  let isDown = false;
-  let startX = 0;
-  let scrollStart = 0;
-  let hasMoved = false;
   const speed = 0.65; // Gentle, luxurious auto-rotation pace
+  let isDown = false;
+  let isTouchActive = false;
+  let hasMoved = false;
+  let suppressClick = false;
+  let startX = 0;
+  let startY = 0;
+  let scrollStart = 0;
+  let isHorizontalDrag = null; // null = undetermined, true = horizontal, false = vertical
 
-  // Hover pauses rotation so the user can inspect or click easily
-  reel.onmouseenter = () => { isReelHovered = true; };
-  reel.onmouseleave = () => { isReelHovered = false; };
+  function pauseRotation() {
+    isReelPaused = true;
+    if (touchResumeTimer) clearTimeout(touchResumeTimer);
+  }
 
-  // Mouse Grab & Drag to rotate manually
+  function resumeRotation(delay = 1800) {
+    if (touchResumeTimer) clearTimeout(touchResumeTimer);
+    touchResumeTimer = setTimeout(() => {
+      isReelPaused = false;
+    }, delay);
+  }
+
+  // Hover pauses on desktop mouse
+  reel.onmouseenter = () => { pauseRotation(); };
+  reel.onmouseleave = () => { if (!isDown && !isTouchActive) isReelPaused = false; };
+
+  // Infinite wrap-around calculation
+  function wrapLoop() {
+    const totalW = reel.scrollWidth;
+    const viewW = reel.clientWidth;
+    if (totalW <= viewW || totalW <= 0) return;
+    const oneThird = totalW / 3;
+
+    if (reel.scrollLeft >= oneThird * 2) {
+      reel.scrollLeft -= oneThird;
+    } else if (reel.scrollLeft <= 10) {
+      reel.scrollLeft += oneThird;
+    }
+  }
+
+  // Ensure initial scroll position starts in the middle set (Set B)
+  requestAnimationFrame(() => {
+    if (reel.scrollWidth > reel.clientWidth && reel.scrollLeft < 10) {
+      reel.scrollLeft = reel.scrollWidth / 3;
+    }
+  });
+
+  // Attach wrapLoop on native scroll event so touch momentum, trackpad, and button scrolls loop seamlessly
+  reel.onscroll = wrapLoop;
+
+  // --- DESKTOP MOUSE DRAG ---
   reel.onmousedown = (e) => {
+    if (e.button !== 0) return;
     isDown = true;
     hasMoved = false;
-    isReelInteracting = true;
+    suppressClick = false;
+    pauseRotation();
     reel.classList.add('is-dragging');
-    startX = e.pageX - reel.offsetLeft;
+    startX = e.pageX;
     scrollStart = reel.scrollLeft;
+  };
+
+  const onMouseMove = (e) => {
+    if (!isDown) return;
+    const dx = e.pageX - startX;
+    if (Math.abs(dx) > 5) {
+      hasMoved = true;
+      suppressClick = true;
+    }
+    reel.scrollLeft = scrollStart - dx * 1.3;
+    wrapLoop();
   };
 
   const onMouseUp = () => {
     if (!isDown) return;
     isDown = false;
-    isReelInteracting = false;
     reel.classList.remove('is-dragging');
+    setTimeout(() => {
+      suppressClick = false;
+      hasMoved = false;
+    }, 150);
+    resumeRotation(1200);
   };
+
+  window.removeEventListener('mousemove', onMouseMove);
+  window.addEventListener('mousemove', onMouseMove);
   window.removeEventListener('mouseup', onMouseUp);
   window.addEventListener('mouseup', onMouseUp);
 
-  reel.onmousemove = (e) => {
-    if (!isDown) return;
-    e.preventDefault();
-    const x = e.pageX - reel.offsetLeft;
-    const walk = (x - startX) * 1.5;
-    if (Math.abs(walk) > 4) {
-      hasMoved = true;
-    }
-    reel.scrollLeft = scrollStart - walk;
-    wrapLoop();
-  };
-
-  // Mobile Touch Swipe & Drag
-  let touchStartX = 0;
-  let touchScrollStart = 0;
-  let touchTimeout = null;
-
+  // --- MOBILE TOUCH SWIPE & SCROLL ---
   reel.ontouchstart = (e) => {
-    isReelInteracting = true;
-    if (e.touches && e.touches.length === 1) {
-      touchStartX = e.touches[0].clientX;
-      touchScrollStart = reel.scrollLeft;
-    }
-    if (touchTimeout) clearTimeout(touchTimeout);
+    if (e.touches.length !== 1) return;
+    isTouchActive = true;
+    hasMoved = false;
+    suppressClick = false;
+    isHorizontalDrag = null;
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
+    scrollStart = reel.scrollLeft;
+    pauseRotation();
   };
 
   reel.ontouchmove = (e) => {
-    if (e.touches && e.touches.length === 1) {
-      const touchX = e.touches[0].clientX;
-      const walk = (touchX - touchStartX) * 1.4;
-      reel.scrollLeft = touchScrollStart - walk;
+    if (!isTouchActive || e.touches.length !== 1) return;
+    const currentX = e.touches[0].clientX;
+    const currentY = e.touches[0].clientY;
+    const dx = currentX - startX;
+    const dy = currentY - startY;
+
+    // Detect direction on first movement beyond 6px
+    if (isHorizontalDrag === null) {
+      if (Math.abs(dx) > 6 || Math.abs(dy) > 6) {
+        isHorizontalDrag = Math.abs(dx) >= Math.abs(dy);
+      }
+    }
+
+    // If vertical gesture, do NOT touch reel.scrollLeft and let normal page scrolling happen naturally!
+    if (isHorizontalDrag === false) {
+      return;
+    }
+
+    // If horizontal gesture, scroll the reel smoothly
+    if (isHorizontalDrag === true) {
+      hasMoved = true;
+      suppressClick = true;
+      reel.scrollLeft = scrollStart - dx * 1.3;
       wrapLoop();
     }
   };
 
-  reel.ontouchend = () => {
-    touchTimeout = setTimeout(() => {
-      isReelInteracting = false;
-    }, 1200);
+  const endTouch = () => {
+    if (!isTouchActive) return;
+    isTouchActive = false;
+    isHorizontalDrag = null;
+    setTimeout(() => {
+      suppressClick = false;
+      hasMoved = false;
+    }, 250);
+    resumeRotation(2000);
   };
 
-  // Lightbox click handler
+  reel.ontouchend = endTouch;
+  reel.ontouchcancel = endTouch;
+
+  // --- LIGHTBOX CLICKS ---
   reel.querySelectorAll('.reel-item').forEach(item => {
     item.onclick = (e) => {
-      if (hasMoved) {
+      if (suppressClick || hasMoved) {
         e.preventDefault();
         e.stopImmediatePropagation();
         return;
       }
-      const idx = parseInt(item.dataset.photoIndex, 10);
-      if (!isNaN(idx) && idx >= 0) {
-        openLightbox(idx);
+      const photoId = parseInt(item.dataset.photoId, 10);
+      const photoIndex = parseInt(item.dataset.photoIndex, 10);
+      if (!isNaN(photoId)) {
+        openLightboxForPhotoId(photoId);
+      } else if (!isNaN(photoIndex) && photoIndex >= 0) {
+        openLightbox(photoIndex);
       }
     };
 
     item.onkeydown = (e) => {
       if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
-        const idx = parseInt(item.dataset.photoIndex, 10);
-        if (!isNaN(idx) && idx >= 0) {
-          openLightbox(idx);
+        const photoId = parseInt(item.dataset.photoId, 10);
+        const photoIndex = parseInt(item.dataset.photoIndex, 10);
+        if (!isNaN(photoId)) {
+          openLightboxForPhotoId(photoId);
+        } else if (!isNaN(photoIndex) && photoIndex >= 0) {
+          openLightbox(photoIndex);
         }
       }
     };
   });
 
-  // Seamless wrap-around logic
-  function wrapLoop() {
-    const totalW = reel.scrollWidth;
-    if (totalW <= 0) return;
-    const oneThird = totalW / 3;
-    if (reel.scrollLeft >= oneThird * 2) {
-      reel.scrollLeft -= oneThird;
-    } else if (reel.scrollLeft <= 0) {
-      reel.scrollLeft += oneThird;
-    }
+  // --- ARROW BUTTONS ---
+  const prevBtn = document.getElementById('reel-nav-prev');
+  const nextBtn = document.getElementById('reel-nav-next');
+  if (prevBtn) {
+    prevBtn.onclick = (e) => {
+      e.preventDefault();
+      pauseRotation();
+      const scrollStep = reel.clientWidth > 480 ? 320 : 220;
+      reel.scrollBy({ left: -scrollStep, behavior: 'smooth' });
+      resumeRotation(2500);
+    };
+  }
+  if (nextBtn) {
+    nextBtn.onclick = (e) => {
+      e.preventDefault();
+      pauseRotation();
+      const scrollStep = reel.clientWidth > 480 ? 320 : 220;
+      reel.scrollBy({ left: scrollStep, behavior: 'smooth' });
+      resumeRotation(2500);
+    };
   }
 
-  // Animation Loop (60fps continuous rotatable scroll)
+  // --- 60FPS CONTINUOUS ROTATION ---
   function step() {
-    if (!isReelHovered && !isReelInteracting && !isDown) {
+    if (!isReelPaused && !isDown && !isTouchActive) {
       reel.scrollLeft += speed;
       wrapLoop();
     }
