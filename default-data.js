@@ -174,6 +174,10 @@ export const defaultSettings = {
   "heroChapter": "Chapter 21",
   "heroSubtitle": "Milestone Portrait",
   "heroName": "RAVEESHA",
-  "heroDate": "OCTOBER 2026"
+  "heroDate": "OCTOBER 2026",
+  "storyImage": "assets/portrait.jpg",
+  "storyHeading": "Hi, I'm Raveesha",
+  "storyText": "Stepping into 21 surrounded by love, golden sunlight, and sweet celebration. This photoshoot captures the laughter, the elegance, and the wonderful memories of entering adulthood and celebrating this milestone chapter. Thank you for celebrating with me!",
+  "storyNote": "Thanks for celebrating Chapter 21 with me!"
 };
 

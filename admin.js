@@ -67,13 +67,17 @@ const addCategoryForm = document.getElementById('add-category-form');
 const newCategoryNameInput = document.getElementById('new-category-name');
 const categoryListBody = document.getElementById('category-list-body');
 
-// Hero Settings Modal & Elements
+// Hero & Site Settings State
 let currentHeroSettings = {
   heroImage: 'assets/portrait.jpg',
   heroChapter: 'Chapter 21',
   heroSubtitle: 'Milestone Portrait',
   heroName: 'RAVEESHA',
-  heroDate: 'OCTOBER 2026'
+  heroDate: 'OCTOBER 2026',
+  storyImage: 'assets/portrait.jpg',
+  storyHeading: "Hi, I'm Raveesha",
+  storyText: 'Stepping into 21 surrounded by love, golden sunlight, and sweet celebration. This photoshoot captures the laughter, the elegance, and the wonderful memories of entering adulthood and celebrating this milestone chapter. Thank you for celebrating with me!',
+  storyNote: 'Thanks for celebrating Chapter 21 with me!'
 };
 
 const openHeroSettingsBtn = document.getElementById('open-hero-settings-btn');
@@ -91,6 +95,25 @@ const heroChapterInput = document.getElementById('hero-chapter-input');
 const heroSubtitleInput = document.getElementById('hero-subtitle-input');
 const heroNameInput = document.getElementById('hero-name-input');
 const heroDateInput = document.getElementById('hero-date-input');
+
+// Story / Polaroid Settings Modal & Elements
+const openStorySettingsBtn = document.getElementById('open-story-settings-btn');
+const storySettingsModal = document.getElementById('story-settings-modal');
+const storySettingsModalBackdrop = document.getElementById('story-settings-modal-backdrop');
+const closeStorySettingsModalBtn = document.getElementById('close-story-settings-modal');
+const cancelStorySettingsBtn = document.getElementById('cancel-story-settings-btn');
+const storySettingsForm = document.getElementById('story-settings-form');
+const storyPreviewImg = document.getElementById('story-preview-img');
+const storyDropZone = document.getElementById('story-drop-zone');
+const storyFileInput = document.getElementById('story-file-input');
+const storyBrowseLink = document.getElementById('story-browse-link');
+const storyImageUrlInput = document.getElementById('story-image-url-input');
+const storyHeadingInput = document.getElementById('story-heading-input');
+const storyTextInput = document.getElementById('story-text-input');
+const storyNoteInput = document.getElementById('story-note-input');
+
+const switchToStorySettingsBtn = document.getElementById('switch-to-story-settings-btn');
+const switchToHeroSettingsBtn = document.getElementById('switch-to-hero-settings-btn');
 
 // Toast
 const toast = document.getElementById('toast');
@@ -320,12 +343,50 @@ function setupEventListeners() {
 
   setupHeroImageUploader();
 
+  // Story Settings Modal Controls
+  if (openStorySettingsBtn) {
+    openStorySettingsBtn.addEventListener('click', openStorySettingsModal);
+  }
+  if (closeStorySettingsModalBtn) {
+    closeStorySettingsModalBtn.addEventListener('click', closeStorySettingsModal);
+  }
+  if (cancelStorySettingsBtn) {
+    cancelStorySettingsBtn.addEventListener('click', closeStorySettingsModal);
+  }
+  if (storySettingsModalBackdrop) {
+    storySettingsModalBackdrop.addEventListener('click', closeStorySettingsModal);
+  }
+  if (storySettingsForm) {
+    storySettingsForm.addEventListener('submit', handleStorySettingsSubmit);
+  }
+  if (storyImageUrlInput) {
+    storyImageUrlInput.addEventListener('input', () => {
+      if (storyPreviewImg) {
+        storyPreviewImg.src = storyImageUrlInput.value.trim() || 'assets/portrait.jpg';
+      }
+    });
+  }
+  if (switchToStorySettingsBtn) {
+    switchToStorySettingsBtn.addEventListener('click', () => {
+      closeHeroSettingsModal();
+      openStorySettingsModal();
+    });
+  }
+  if (switchToHeroSettingsBtn) {
+    switchToHeroSettingsBtn.addEventListener('click', () => {
+      closeStorySettingsModal();
+      openHeroSettingsModal();
+    });
+  }
+  setupStoryImageUploader();
+
   // Esc key close modals
   window.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
       closeProductModal();
       closeCategoryModal();
       closeHeroSettingsModal();
+      closeStorySettingsModal();
     }
   });
 
@@ -912,9 +973,10 @@ async function fetchHeroSettings() {
     if (res.ok) {
       currentHeroSettings = await res.json();
       populateHeroSettingsForm();
+      populateStorySettingsForm();
     }
   } catch (err) {
-    console.warn('Could not load hero settings:', err);
+    console.warn('Could not load hero/story settings:', err);
   }
 }
 
@@ -939,6 +1001,30 @@ function closeHeroSettingsModal() {
   if (heroSettingsModal) {
     heroSettingsModal.classList.remove('open');
     heroSettingsModal.setAttribute('aria-hidden', 'true');
+  }
+}
+
+function populateStorySettingsForm() {
+  const storyImg = currentHeroSettings.storyImage || currentHeroSettings.heroImage || 'assets/portrait.jpg';
+  if (storyImageUrlInput) storyImageUrlInput.value = storyImg;
+  if (storyPreviewImg) storyPreviewImg.src = storyImg;
+  if (storyHeadingInput) storyHeadingInput.value = currentHeroSettings.storyHeading || "Hi, I'm Raveesha";
+  if (storyTextInput) storyTextInput.value = currentHeroSettings.storyText || "Stepping into 21 surrounded by love, golden sunlight, and sweet celebration. This photoshoot captures the laughter, the elegance, and the wonderful memories of entering adulthood and celebrating this milestone chapter. Thank you for celebrating with me!";
+  if (storyNoteInput) storyNoteInput.value = currentHeroSettings.storyNote || "Thanks for celebrating Chapter 21 with me!";
+}
+
+function openStorySettingsModal() {
+  populateStorySettingsForm();
+  if (storySettingsModal) {
+    storySettingsModal.classList.add('open');
+    storySettingsModal.setAttribute('aria-hidden', 'false');
+  }
+}
+
+function closeStorySettingsModal() {
+  if (storySettingsModal) {
+    storySettingsModal.classList.remove('open');
+    storySettingsModal.setAttribute('aria-hidden', 'true');
   }
 }
 
@@ -1077,6 +1163,146 @@ async function handleHeroSettingsSubmit(e) {
     if (saveBtn) {
       saveBtn.disabled = false;
       saveBtn.innerHTML = '<span>Save Main Image</span>';
+    }
+  }
+}
+
+// ================= STORY / POLAROID SETTINGS =================
+function setupStoryImageUploader() {
+  if (!storyDropZone || !storyFileInput) return;
+
+  // Click browse
+  storyDropZone.addEventListener('click', (e) => {
+    if (e.target !== storyFileInput) {
+      storyFileInput.click();
+    }
+  });
+
+  if (storyBrowseLink) {
+    storyBrowseLink.addEventListener('click', (e) => {
+      e.stopPropagation();
+      storyFileInput.click();
+    });
+  }
+
+  // File chosen
+  storyFileInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (file) uploadStoryImageFile(file);
+  });
+
+  // Drag and drop
+  ['dragenter', 'dragover'].forEach(eventName => {
+    storyDropZone.addEventListener(eventName, (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      storyDropZone.classList.add('drag-active');
+    });
+  });
+
+  ['dragleave', 'drop'].forEach(eventName => {
+    storyDropZone.addEventListener(eventName, (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      storyDropZone.classList.remove('drag-active');
+    });
+  });
+
+  storyDropZone.addEventListener('drop', (e) => {
+    const file = e.dataTransfer?.files?.[0];
+    if (file) uploadStoryImageFile(file);
+  });
+}
+
+async function uploadStoryImageFile(file) {
+  if (!file.type.startsWith('image/')) {
+    alert('Please upload an image file (PNG, JPG, WEBP).');
+    return;
+  }
+
+  showToast(`Optimizing & loading ${file.name}...`);
+  try {
+    const dataUrl = await compressImageFile(file);
+    if (storyPreviewImg) storyPreviewImg.src = dataUrl;
+    if (storyImageUrlInput) storyImageUrlInput.value = dataUrl;
+
+    try {
+      const res = await apiRequest('/api/upload', {
+        method: 'POST',
+        body: JSON.stringify({
+          dataUrl,
+          filename: file.name
+        })
+      });
+
+      const data = await res.json();
+      if (res.ok && data.success && data.url) {
+        if (storyImageUrlInput) storyImageUrlInput.value = data.url;
+        if (storyPreviewImg) storyPreviewImg.src = data.url;
+        showToast('Photo uploaded for story polaroid!');
+      } else {
+        showToast('Photo optimized and ready to save!');
+      }
+    } catch (_) {
+      showToast('Photo optimized and ready to save!');
+    }
+  } catch (err) {
+    alert(`Error processing photo: ${err.message}`);
+  }
+}
+
+async function handleStorySettingsSubmit(e) {
+  e.preventDefault();
+  const saveBtn = document.getElementById('save-story-settings-btn');
+  if (saveBtn) {
+    saveBtn.disabled = true;
+    saveBtn.innerHTML = '<span>Saving...</span>';
+  }
+
+  try {
+    const payload = {
+      ...currentHeroSettings,
+      storyImage: storyImageUrlInput ? storyImageUrlInput.value.trim() : (currentHeroSettings.storyImage || 'assets/portrait.jpg'),
+      storyHeading: storyHeadingInput ? storyHeadingInput.value.trim() : "Hi, I'm Raveesha",
+      storyText: storyTextInput ? storyTextInput.value.trim() : '',
+      storyNote: storyNoteInput ? storyNoteInput.value.trim() : '',
+      updatedAt: new Date().toISOString()
+    };
+
+    const res = await apiRequest('/api/settings', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+
+    const data = await res.json();
+    if (res.ok && data.success) {
+      currentHeroSettings = data.settings;
+
+      // Save to localStorage immediately so it never reverts
+      try {
+        localStorage.setItem('birthday_settings_cache', JSON.stringify(data.settings));
+        localStorage.setItem('birthday_settings_updated_at', data.settings.updatedAt || new Date().toISOString());
+        window.dispatchEvent(new Event('storage'));
+      } catch (_) {}
+
+      // Re-hydrate server via sync endpoint
+      fetch('/api/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ settings: data.settings })
+      }).catch(() => {});
+
+      showToast('Story polaroid photo updated permanently!');
+      closeStorySettingsModal();
+    } else {
+      alert(`Error: ${data.error || 'Failed to update story settings'}`);
+    }
+  } catch (err) {
+    alert(`Error updating story settings: ${err.message}`);
+  } finally {
+    if (saveBtn) {
+      saveBtn.disabled = false;
+      saveBtn.innerHTML = '<span>Save Story Photo</span>';
     }
   }
 }

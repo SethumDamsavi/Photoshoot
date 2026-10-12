@@ -269,6 +269,10 @@ export async function handleApiRequest(req, res) {
       heroSubtitle: body.heroSubtitle !== undefined && body.heroSubtitle !== '' ? body.heroSubtitle.trim() : currentSettings.heroSubtitle,
       heroName: body.heroName !== undefined && body.heroName !== '' ? body.heroName.trim() : currentSettings.heroName,
       heroDate: body.heroDate !== undefined && body.heroDate !== '' ? body.heroDate.trim() : currentSettings.heroDate,
+      storyImage: body.storyImage !== undefined && body.storyImage !== '' ? body.storyImage.trim() : (currentSettings.storyImage || currentSettings.heroImage || 'assets/portrait.jpg'),
+      storyHeading: body.storyHeading !== undefined && body.storyHeading !== '' ? body.storyHeading.trim() : (currentSettings.storyHeading || "Hi, I'm Raveesha"),
+      storyText: body.storyText !== undefined && body.storyText !== '' ? body.storyText.trim() : (currentSettings.storyText || "Stepping into 21 surrounded by love, golden sunlight, and sweet celebration. This photoshoot captures the laughter, the elegance, and the wonderful memories of entering adulthood and celebrating this milestone chapter. Thank you for celebrating with me!"),
+      storyNote: body.storyNote !== undefined && body.storyNote !== '' ? body.storyNote.trim() : (currentSettings.storyNote || "Thanks for celebrating Chapter 21 with me!"),
       updatedAt: new Date().toISOString()
     };
 

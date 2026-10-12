@@ -37,7 +37,11 @@ let siteSettings = {
   heroChapter: 'Chapter 21',
   heroSubtitle: 'Milestone Portrait',
   heroName: 'Raveesha',
-  heroDate: 'October 2026'
+  heroDate: 'October 2026',
+  storyImage: 'assets/portrait.jpg',
+  storyHeading: "Hi, I'm Raveesha",
+  storyText: 'Stepping into 21 surrounded by love, golden sunlight, and sweet celebration. This photoshoot captures the laughter, the elegance, and the wonderful memories of entering adulthood and celebrating this milestone chapter. Thank you for celebrating with me!',
+  storyNote: 'Thanks for celebrating Chapter 21 with me!'
 };
 
 function applyHeroSettings(settings) {
@@ -67,6 +71,27 @@ function applyHeroSettings(settings) {
   const dateEl = document.getElementById('hero-plaque-date');
   if (dateEl && settings.heroDate) {
     dateEl.textContent = settings.heroDate;
+  }
+
+  // Story Greeting & Polaroid Photo
+  const storyImg = document.getElementById('story-polaroid-img');
+  if (storyImg && (settings.storyImage || settings.heroImage)) {
+    storyImg.src = settings.storyImage || settings.heroImage;
+  }
+
+  const storyHeading = document.getElementById('story-heading');
+  if (storyHeading && settings.storyHeading) {
+    storyHeading.textContent = settings.storyHeading;
+  }
+
+  const storyText = document.getElementById('story-body-text');
+  if (storyText && settings.storyText) {
+    storyText.textContent = settings.storyText;
+  }
+
+  const storyNote = document.getElementById('story-handwritten-note-text');
+  if (storyNote && settings.storyNote) {
+    storyNote.textContent = settings.storyNote;
   }
 }
 
