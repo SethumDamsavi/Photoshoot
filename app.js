@@ -4,6 +4,8 @@
  * Zero Pricing - Dedicated exclusively to photography, memories & milestones.
  */
 
+import { defaultProducts, defaultCategories, defaultSettings } from './default-data.js';
+
 // Backend API Endpoints
 const PRODUCTS_API = '/api/products';
 const CATEGORIES_API = '/api/categories';
@@ -33,15 +35,7 @@ let filteredProducts = [];
 
 // Settings State
 let siteSettings = {
-  heroImage: 'assets/portrait.jpg',
-  heroChapter: 'Chapter 21',
-  heroSubtitle: 'Milestone Portrait',
-  heroName: 'Raveesha',
-  heroDate: 'October 2026',
-  storyImage: 'assets/portrait.jpg',
-  storyHeading: "Hi, I'm Raveesha",
-  storyText: 'Stepping into 21 surrounded by love, golden sunlight, and sweet celebration. This photoshoot captures the laughter, the elegance, and the wonderful memories of entering adulthood and celebrating this milestone chapter. Thank you for celebrating with me!',
-  storyNote: 'Thanks for celebrating Chapter 21 with me!'
+  ...defaultSettings
 };
 
 function applyHeroSettings(settings) {
@@ -123,22 +117,38 @@ async function fetchSettings() {
 
 // ================= INITIALIZATION =================
 document.addEventListener('DOMContentLoaded', () => {
-  // Load cached settings immediately to prevent flash or revert
+  // Apply default or cached settings immediately to prevent flash or old photos
+  let initialSettings = { ...siteSettings };
   try {
     const cachedSettings = localStorage.getItem('birthday_settings_cache');
-    if (cachedSettings) applyHeroSettings(JSON.parse(cachedSettings));
+    if (cachedSettings) {
+      initialSettings = { ...initialSettings, ...JSON.parse(cachedSettings) };
+    }
+  } catch (_) {}
+  applyHeroSettings(initialSettings);
 
+  // Initialize products from cache or bundled defaults
+  try {
     const cachedProds = localStorage.getItem('birthday_products_cache');
     if (cachedProds) {
       const parsedProds = JSON.parse(cachedProds);
       if (Array.isArray(parsedProds) && parsedProds.length > 0) {
         products = parsedProds;
-        renderGallery();
-        renderHighlightReel();
-        updateStats();
       }
     }
   } catch (_) {}
+
+  if (!products || products.length === 0) {
+    products = mapRawProducts(defaultProducts);
+  }
+  if (!categories || categories.length === 0) {
+    categories = [...defaultCategories];
+  }
+
+  renderCategoryTabs();
+  renderGallery();
+  renderHighlightReel();
+  updateStats();
 
   setupEventListeners();
   setupReelStripAutoRotation();
@@ -199,91 +209,8 @@ function mapRawProducts(rawProducts) {
 }
 
 // Fallback data if API is unreachable
-const FALLBACK_CATEGORIES = [
-  { id: 'portraits', name: 'Portraits', slug: 'portraits', count: 1 },
-  { id: 'golden-hour', name: 'Golden Hour', slug: 'golden-hour', count: 1 },
-  { id: 'cake-wishes', name: 'Cake & Wishes', slug: 'cake-wishes', count: 1 },
-  { id: 'candid-moments', name: 'Candid Moments', slug: 'candid-moments', count: 1 }
-];
-
-const FALLBACK_PRODUCTS = [
-  {
-    id: 1,
-    name: "Chapter 21: The 21st Milestone Portrait",
-    category: "Portraits",
-    categorySlug: "portraits",
-    date: "October 9, 2026",
-    location: "Lumière Atelier Studio",
-    image: "assets/portrait.jpg",
-    shortDescription: "Commemorating her 21st milestone with timeless elegance against soft rose and ivory tones.",
-    description: "A radiant 21st birthday milestone portrait celebrating grace, ambition, and youthful elegance. Bathed in soft ambient light with blooming peony tones, capturing her genuine smile as she enters Chapter 21.",
-    featured: true,
-    published: true,
-    attributes: [
-      { name: "Camera", terms: [{ name: "Sony Alpha A7 IV" }] },
-      { name: "Lens", terms: [{ name: "85mm f/1.4 GM" }] },
-      { name: "Lighting", terms: [{ name: "Profoto Softbox & Peony Glow" }] },
-      { name: "Mood", terms: [{ name: "Editorial, Serene, Graceful" }] }
-    ]
-  },
-  {
-    id: 2,
-    name: "Twenty-One Wishes & Peony Cake",
-    category: "Cake & Wishes",
-    categorySlug: "cake-wishes",
-    date: "October 9, 2026",
-    location: "The Glasshouse Conservatory",
-    image: "assets/cake.jpg",
-    shortDescription: "A handcrafted tiered birthday cake adorned with blush peonies, delicate pearls, and 21 golden wishes.",
-    description: "Making twenty-one heartfelt wishes: a custom tiered rose-water birthday cake dressed in silky pink buttercream, fresh garden petals, and glowing candlelight marking her 21st birthday milestone.",
-    featured: true,
-    published: true,
-    attributes: [
-      { name: "Camera", terms: [{ name: "Canon EOS R5" }] },
-      { name: "Lens", terms: [{ name: "50mm f/1.2L USM" }] },
-      { name: "Lighting", terms: [{ name: "Natural Window Light + Candlelight" }] },
-      { name: "Mood", terms: [{ name: "Festive, Sweet, Romantic" }] }
-    ]
-  },
-  {
-    id: 3,
-    name: "Golden Hour Glow: Stepping into 21",
-    category: "Golden Hour",
-    categorySlug: "golden-hour",
-    date: "October 9, 2026",
-    location: "Rosewood Botanical Gardens",
-    image: "assets/golden_hour.jpg",
-    shortDescription: "Sun-drenched golden hour portrait celebrating her vibrant spirit at twenty-one.",
-    description: "Basking in the golden afternoon warmth on her 21st birthday. The setting sun paints a dreamy halo of light around her, capturing carefree elegance and the joy of stepping into womanhood.",
-    featured: true,
-    published: true,
-    attributes: [
-      { name: "Camera", terms: [{ name: "Sony Alpha A7 IV" }] },
-      { name: "Lens", terms: [{ name: "35mm f/1.4 GM" }] },
-      { name: "Lighting", terms: [{ name: "Direct Golden Hour Sunlight" }] },
-      { name: "Mood", terms: [{ name: "Warm, Dreamy, Luminous" }] }
-    ]
-  },
-  {
-    id: 4,
-    name: "Shoreline Joy & Birthday Breeze",
-    category: "Candid Moments",
-    categorySlug: "candid-moments",
-    date: "October 9, 2026",
-    location: "Sunset Beach Shore",
-    image: "assets/beach_candid_shore.jpg",
-    shortDescription: "Spontaneous laughter and barefoot ocean breeze celebrating twenty-one unforgettable years.",
-    description: "Pure youthful joy on her 21st birthday. Walking along the sunlit waves with a radiant smile, feeling the cool ocean spray and celebrating life's most beautiful milestone chapter.",
-    featured: false,
-    published: true,
-    attributes: [
-      { name: "Camera", terms: [{ name: "Sony Alpha A7 IV" }] },
-      { name: "Lens", terms: [{ name: "24-70mm f/2.8 GM II" }] },
-      { name: "Lighting", terms: [{ name: "Ambient Sunset Horizon" }] },
-      { name: "Mood", terms: [{ name: "Joyful, Spontaneous, Authentic" }] }
-    ]
-  }
-];
+const FALLBACK_CATEGORIES = defaultCategories;
+const FALLBACK_PRODUCTS = defaultProducts;
 
 // Load photo collection and albums from Backend
 async function loadBackendData() {

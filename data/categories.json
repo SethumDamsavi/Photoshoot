@@ -2,21 +2,25 @@
   {
     "id": "portraits",
     "name": "Portraits",
-    "slug": "portraits"
+    "slug": "portraits",
+    "count": 1
   },
   {
     "id": "golden-hour",
     "name": "Golden Hour",
-    "slug": "golden-hour"
+    "slug": "golden-hour",
+    "count": 1
   },
   {
     "id": "cake-wishes",
     "name": "Cake & Wishes",
-    "slug": "cake-wishes"
+    "slug": "cake-wishes",
+    "count": 1
   },
   {
     "id": "candid-moments",
     "name": "Candid Moments",
-    "slug": "candid-moments"
+    "slug": "candid-moments",
+    "count": 1
   }
 ]
