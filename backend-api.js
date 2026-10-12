@@ -35,11 +35,29 @@ function readJSON(file, fallback = []) {
 
   const defaultData = isProducts ? defaultProducts : isCategories ? defaultCategories : isUsers ? defaultUsers : isSettings ? defaultSettings : fallback;
 
+  // 1. Check in-memory store first
   if (isProducts && memoryStore.products) return memoryStore.products;
   if (isCategories && memoryStore.categories) return memoryStore.categories;
   if (isUsers && memoryStore.users) return memoryStore.users;
   if (isSettings && memoryStore.settings) return memoryStore.settings;
 
+  // 2. Check /tmp/data first (contains latest runtime updates in serverless)
+  try {
+    const tmpFile = path.join('/tmp', 'data', path.basename(file));
+    if (fs.existsSync(tmpFile)) {
+      const content = fs.readFileSync(tmpFile, 'utf-8');
+      const parsed = JSON.parse(content || (isSettings ? '{}' : '[]'));
+      if (parsed && typeof parsed === 'object') {
+        if (isProducts) memoryStore.products = parsed;
+        if (isCategories) memoryStore.categories = parsed;
+        if (isUsers) memoryStore.users = parsed;
+        if (isSettings) memoryStore.settings = parsed;
+        return parsed;
+      }
+    }
+  } catch (_) {}
+
+  // 3. Check workspace bundled file
   try {
     if (fs.existsSync(file)) {
       const content = fs.readFileSync(file, 'utf-8');
@@ -56,6 +74,7 @@ function readJSON(file, fallback = []) {
     console.warn(`File read fallback for ${file}:`, err.message);
   }
 
+  // 4. Fallback to default bundled dataset
   const result = JSON.parse(JSON.stringify(defaultData));
   if (isProducts) memoryStore.products = result;
   if (isCategories) memoryStore.categories = result;
@@ -75,18 +94,19 @@ function writeJSON(file, data) {
   if (isUsers) memoryStore.users = data;
   if (isSettings) memoryStore.settings = data;
 
+  // 1. Always write to /tmp in serverless environments
+  try {
+    const tmpDir = path.join('/tmp', 'data');
+    if (!fs.existsSync(tmpDir)) fs.mkdirSync(tmpDir, { recursive: true });
+    fs.writeFileSync(path.join(tmpDir, path.basename(file)), JSON.stringify(data, null, 2), 'utf-8');
+  } catch (_) {}
+
+  // 2. Always write to local file if writable
   try {
     fs.writeFileSync(file, JSON.stringify(data, null, 2), 'utf-8');
-    return true;
-  } catch (err) {
-    // In serverless read-only environment, fallback to memory + /tmp
-    try {
-      const tmpDir = path.join('/tmp', 'data');
-      if (!fs.existsSync(tmpDir)) fs.mkdirSync(tmpDir, { recursive: true });
-      fs.writeFileSync(path.join(tmpDir, path.basename(file)), JSON.stringify(data, null, 2), 'utf-8');
-    } catch (_) {}
-    return true;
-  }
+  } catch (_) {}
+
+  return true;
 }
 
 // Authentication Helpers
@@ -175,10 +195,14 @@ export async function handleApiRequest(req, res) {
     return true;
   }
 
-  // Response Helper
+  // Response Helper with strict no-cache headers for instant updates
   const sendJSON = (statusCode, data) => {
     res.statusCode = statusCode;
     res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    res.setHeader('Surrogate-Control', 'no-store');
     res.end(JSON.stringify(data));
     return true;
   };
@@ -250,6 +274,44 @@ export async function handleApiRequest(req, res) {
 
     writeJSON(SETTINGS_FILE, updatedSettings);
     return sendJSON(200, { success: true, settings: updatedSettings });
+  }
+
+  // 3.7. ARCHIVE SYNC: GET & POST (Bi-directional persistence across serverless lifecycles)
+  if (pathname === '/api/sync' && method === 'GET') {
+    const products = readJSON(PRODUCTS_FILE);
+    const categories = readJSON(CATEGORIES_FILE);
+    const settings = readJSON(SETTINGS_FILE, defaultSettings);
+    return sendJSON(200, {
+      success: true,
+      products,
+      categories,
+      settings,
+      serverTime: new Date().toISOString()
+    });
+  }
+
+  if (pathname === '/api/sync' && method === 'POST') {
+    const body = await parseBody(req);
+    if (body.settings && typeof body.settings === 'object') {
+      const current = readJSON(SETTINGS_FILE, defaultSettings);
+      const updated = {
+        ...current,
+        ...body.settings,
+        updatedAt: body.settings.updatedAt || new Date().toISOString()
+      };
+      writeJSON(SETTINGS_FILE, updated);
+    }
+    if (Array.isArray(body.products) && body.products.length > 0) {
+      writeJSON(PRODUCTS_FILE, body.products);
+    }
+    if (Array.isArray(body.categories) && body.categories.length > 0) {
+      writeJSON(CATEGORIES_FILE, body.categories);
+    }
+    return sendJSON(200, {
+      success: true,
+      message: 'Archive synchronized successfully',
+      serverTime: new Date().toISOString()
+    });
   }
 
   // 4. CATEGORIES: GET (Public)

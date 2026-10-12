@@ -72,12 +72,31 @@ function applyHeroSettings(settings) {
 
 async function fetchSettings() {
   try {
-    const res = await fetch(SETTINGS_API);
+    const res = await fetch(SETTINGS_API, { cache: 'no-store' });
     if (res.ok) {
       const data = await res.json();
+      
+      const localTime = new Date(localStorage.getItem('birthday_settings_updated_at') || 0).getTime();
+      const serverTime = new Date(data.updatedAt || 0).getTime();
+
+      // If local cache is newer than server response, keep local and re-hydrate server
+      if (localTime > serverTime && localTime > 0) {
+        const localSettings = JSON.parse(localStorage.getItem('birthday_settings_cache') || '{}');
+        if (localSettings && localSettings.heroImage) {
+          applyHeroSettings(localSettings);
+          fetch('/api/sync', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ settings: localSettings })
+          }).catch(() => {});
+          return;
+        }
+      }
+
       applyHeroSettings(data);
       try {
         localStorage.setItem('birthday_settings_cache', JSON.stringify(data));
+        localStorage.setItem('birthday_settings_updated_at', data.updatedAt || new Date().toISOString());
       } catch (_) {}
     }
   } catch (err) {
@@ -87,10 +106,21 @@ async function fetchSettings() {
 
 // ================= INITIALIZATION =================
 document.addEventListener('DOMContentLoaded', () => {
-  // Load cached settings immediately to prevent flash
+  // Load cached settings immediately to prevent flash or revert
   try {
     const cachedSettings = localStorage.getItem('birthday_settings_cache');
     if (cachedSettings) applyHeroSettings(JSON.parse(cachedSettings));
+
+    const cachedProds = localStorage.getItem('birthday_products_cache');
+    if (cachedProds) {
+      const parsedProds = JSON.parse(cachedProds);
+      if (Array.isArray(parsedProds) && parsedProds.length > 0) {
+        products = parsedProds;
+        renderGallery();
+        renderHighlightReel();
+        updateStats();
+      }
+    }
   } catch (_) {}
 
   setupEventListeners();
@@ -98,6 +128,21 @@ document.addEventListener('DOMContentLoaded', () => {
   startCountdownTimer();
   initPetals();
   loadBackendData();
+});
+
+// Listen for cross-tab updates from Admin Studio in real time
+window.addEventListener('storage', (e) => {
+  if (e.key === 'birthday_settings_cache' && e.newValue) {
+    try { applyHeroSettings(JSON.parse(e.newValue)); } catch (_) {}
+  }
+  if (e.key === 'birthday_products_cache' && e.newValue) {
+    try {
+      products = JSON.parse(e.newValue);
+      renderGallery();
+      renderHighlightReel();
+      updateStats();
+    } catch (_) {}
+  }
 });
 
 // Load photo collection and albums from Backend
@@ -284,18 +329,45 @@ async function loadBackendData() {
 
 // Fetch photo albums
 async function fetchCategories() {
-  const response = await fetch(CATEGORIES_API);
+  const response = await fetch(CATEGORIES_API, { cache: 'no-store' });
   if (!response.ok) throw new Error(`HTTP ${response.status} fetching albums`);
   const rawCategories = await response.json();
   categories = rawCategories.filter(c => c.count > 0 || c.id);
   renderCategoryTabs();
 }
 
-// Fetch birthday photos
+// Fetch birthday photos with anti-revert synchronization
 async function fetchProducts() {
-  const response = await fetch(PRODUCTS_API);
+  const response = await fetch(PRODUCTS_API, { cache: 'no-store' });
   if (!response.ok) throw new Error(`HTTP ${response.status} fetching photos`);
   const rawProducts = await response.json();
+
+  // Check if local cache has custom or newer photos that a server cold-start lost
+  try {
+    const cachedStr = localStorage.getItem('birthday_products_cache');
+    const localTime = new Date(localStorage.getItem('birthday_products_updated_at') || 0).getTime();
+    if (cachedStr && localTime > 0) {
+      const cached = JSON.parse(cachedStr);
+      if (Array.isArray(cached) && cached.length > 0) {
+        // If local cache has more photos or custom uploaded moments
+        const isCustomLocal = cached.length > rawProducts.length || cached.some(p => p.createdAt && new Date(p.createdAt).getTime() > 1750000000000);
+        if (isCustomLocal) {
+          products = cached;
+          renderGallery();
+          renderHighlightReel();
+          updateStats();
+
+          // Re-hydrate server store in background so other devices also see them
+          fetch('/api/sync', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ products: cached })
+          }).catch(() => {});
+          return;
+        }
+      }
+    }
+  } catch (_) {}
 
   products = mapRawProducts(rawProducts);
   renderGallery();

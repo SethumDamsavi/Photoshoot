@@ -632,6 +632,20 @@ async function handleProductFormSubmit(e) {
       showToast(isEditing ? 'Photo updated successfully!' : 'New photo added to archive!');
       closeProductModal();
       await loadDashboardData();
+
+      // Persist permanently to localStorage and broadcast to open tabs
+      try {
+        localStorage.setItem('birthday_products_cache', JSON.stringify(allProducts));
+        localStorage.setItem('birthday_products_updated_at', new Date().toISOString());
+        window.dispatchEvent(new Event('storage'));
+      } catch (_) {}
+
+      // Re-hydrate server store so cold lambdas retain latest photos
+      fetch('/api/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ products: allProducts })
+      }).catch(() => {});
     } else {
       alert(`Error saving photo: ${data.error || 'Unknown error'}`);
     }
@@ -659,6 +673,18 @@ async function handleDeleteProduct(id) {
     if (res.ok && data.success) {
       showToast(`Removed "${name}".`);
       await loadDashboardData();
+
+      try {
+        localStorage.setItem('birthday_products_cache', JSON.stringify(allProducts));
+        localStorage.setItem('birthday_products_updated_at', new Date().toISOString());
+        window.dispatchEvent(new Event('storage'));
+      } catch (_) {}
+
+      fetch('/api/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ products: allProducts })
+      }).catch(() => {});
     } else {
       alert(`Failed to delete: ${data.error || 'Unknown error'}`);
     }
@@ -709,25 +735,61 @@ function setupImageUploader() {
   }
 }
 
-function uploadImageFile(file) {
+// Automatically compress high-res camera photos to web-optimized JPEG (~150-250KB)
+async function compressImageFile(file, maxDimension = 1600, quality = 0.85) {
+  return new Promise((resolve, reject) => {
+    if (!file.type.startsWith('image/')) {
+      return reject(new Error('File is not an image'));
+    }
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('Failed to read file'));
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onerror = () => reject(new Error('Failed to load image'));
+      img.onload = () => {
+        let width = img.width;
+        let height = img.height;
+
+        if (width > maxDimension || height > maxDimension) {
+          if (width > height) {
+            height = Math.round((height * maxDimension) / width);
+            width = maxDimension;
+          } else {
+            width = Math.round((width * maxDimension) / height);
+            height = maxDimension;
+          }
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        ctx.drawImage(img, 0, 0, width, height);
+
+        const compressedDataUrl = canvas.toDataURL('image/jpeg', quality);
+        resolve(compressedDataUrl);
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+async function uploadImageFile(file) {
   if (!file.type.startsWith('image/')) {
     alert('Please upload an image file (PNG, JPG, WEBP).');
     return;
   }
 
-  showToast(`Loading ${file.name}...`);
-  const reader = new FileReader();
-
-  reader.onload = async (e) => {
-    const dataUrl = e.target.result;
+  showToast(`Optimizing & loading ${file.name}...`);
+  try {
+    const dataUrl = await compressImageFile(file);
 
     // Immediately show the image in preview and populate input
-    if (imagePreviewImg) {
-      imagePreviewImg.src = dataUrl;
-    }
-    if (prodImageUrlInput) {
-      prodImageUrlInput.value = dataUrl;
-    }
+    if (imagePreviewImg) imagePreviewImg.src = dataUrl;
+    if (prodImageUrlInput) prodImageUrlInput.value = dataUrl;
 
     try {
       const res = await apiRequest('/api/upload', {
@@ -739,25 +801,19 @@ function uploadImageFile(file) {
       });
 
       const data = await res.json();
-      if (res.ok && data.success) {
-        if (prodImageUrlInput && data.url) {
-          prodImageUrlInput.value = data.url;
-        }
-        if (imagePreviewImg && data.url) {
-          imagePreviewImg.src = data.url;
-        }
-        showToast('Photo uploaded and ready!');
+      if (res.ok && data.success && data.url) {
+        if (prodImageUrlInput) prodImageUrlInput.value = data.url;
+        if (imagePreviewImg) imagePreviewImg.src = data.url;
+        showToast('Photo uploaded & ready!');
       } else {
-        // Fallback: dataUrl is already set and ready to be saved with product!
-        showToast('Photo loaded!');
+        showToast('Photo optimized & ready to save!');
       }
-    } catch (err) {
-      console.warn('Upload API note:', err);
-      showToast('Photo loaded!');
+    } catch (_) {
+      showToast('Photo optimized & ready to save!');
     }
-  };
-
-  reader.readAsDataURL(file);
+  } catch (err) {
+    alert(`Error processing photo: ${err.message}`);
+  }
 }
 
 // ================= ALBUMS / CATEGORIES MODAL =================
@@ -932,18 +988,17 @@ function setupHeroImageUploader() {
   });
 }
 
-function uploadHeroImageFile(file) {
+async function uploadHeroImageFile(file) {
   if (!file.type.startsWith('image/')) {
     alert('Please upload an image file (PNG, JPG, WEBP).');
     return;
   }
 
-  showToast(`Uploading ${file.name}...`);
-  const reader = new FileReader();
-
-  reader.onload = async (e) => {
-    const dataUrl = e.target.result;
+  showToast(`Optimizing & loading ${file.name}...`);
+  try {
+    const dataUrl = await compressImageFile(file);
     if (heroPreviewImg) heroPreviewImg.src = dataUrl;
+    if (heroImageUrlInput) heroImageUrlInput.value = dataUrl;
 
     try {
       const res = await apiRequest('/api/upload', {
@@ -955,19 +1010,19 @@ function uploadHeroImageFile(file) {
       });
 
       const data = await res.json();
-      if (res.ok && data.success) {
+      if (res.ok && data.success && data.url) {
         if (heroImageUrlInput) heroImageUrlInput.value = data.url;
         if (heroPreviewImg) heroPreviewImg.src = data.url;
         showToast('Photo uploaded for main image!');
       } else {
-        alert(`Upload error: ${data.error || 'Server error'}`);
+        showToast('Photo optimized and ready to save!');
       }
-    } catch (err) {
-      alert(`Upload request failed: ${err.message}`);
+    } catch (_) {
+      showToast('Photo optimized and ready to save!');
     }
-  };
-
-  reader.readAsDataURL(file);
+  } catch (err) {
+    alert(`Error processing photo: ${err.message}`);
+  }
 }
 
 async function handleHeroSettingsSubmit(e) {
@@ -984,7 +1039,8 @@ async function handleHeroSettingsSubmit(e) {
       heroChapter: heroChapterInput ? heroChapterInput.value.trim() : '',
       heroSubtitle: heroSubtitleInput ? heroSubtitleInput.value.trim() : '',
       heroName: heroNameInput ? heroNameInput.value.trim() : '',
-      heroDate: heroDateInput ? heroDateInput.value.trim() : ''
+      heroDate: heroDateInput ? heroDateInput.value.trim() : '',
+      updatedAt: new Date().toISOString()
     };
 
     const res = await apiRequest('/api/settings', {
@@ -995,7 +1051,22 @@ async function handleHeroSettingsSubmit(e) {
     const data = await res.json();
     if (res.ok && data.success) {
       currentHeroSettings = data.settings;
-      showToast('Main hero image and details updated successfully!');
+
+      // Save to localStorage immediately so it never reverts
+      try {
+        localStorage.setItem('birthday_settings_cache', JSON.stringify(data.settings));
+        localStorage.setItem('birthday_settings_updated_at', data.settings.updatedAt || new Date().toISOString());
+        window.dispatchEvent(new Event('storage'));
+      } catch (_) {}
+
+      // Re-hydrate server via sync endpoint
+      fetch('/api/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ settings: data.settings })
+      }).catch(() => {});
+
+      showToast('Main hero image updated permanently!');
       closeHeroSettingsModal();
     } else {
       alert(`Error: ${data.error || 'Failed to update settings'}`);
