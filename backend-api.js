@@ -1,13 +1,14 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import { defaultProducts, defaultCategories, defaultUsers } from './default-data.js';
+import { defaultProducts, defaultCategories, defaultUsers, defaultSettings } from './default-data.js';
 
 const DATA_DIR = path.resolve(process.cwd(), 'data');
 const UPLOADS_DIR = path.resolve(process.cwd(), 'uploads');
 const PRODUCTS_FILE = path.join(DATA_DIR, 'products.json');
 const CATEGORIES_FILE = path.join(DATA_DIR, 'categories.json');
 const USERS_FILE = path.join(DATA_DIR, 'users.json');
+const SETTINGS_FILE = path.join(DATA_DIR, 'settings.json');
 
 // Safely ensure directories exist
 try {
@@ -22,28 +23,32 @@ const activeSessions = new Map();
 const memoryStore = {
   products: null,
   categories: null,
-  users: null
+  users: null,
+  settings: null
 };
 
 function readJSON(file, fallback = []) {
   const isProducts = file.includes('products.json');
   const isCategories = file.includes('categories.json');
   const isUsers = file.includes('users.json');
+  const isSettings = file.includes('settings.json');
 
-  const defaultData = isProducts ? defaultProducts : isCategories ? defaultCategories : isUsers ? defaultUsers : fallback;
+  const defaultData = isProducts ? defaultProducts : isCategories ? defaultCategories : isUsers ? defaultUsers : isSettings ? defaultSettings : fallback;
 
   if (isProducts && memoryStore.products) return memoryStore.products;
   if (isCategories && memoryStore.categories) return memoryStore.categories;
   if (isUsers && memoryStore.users) return memoryStore.users;
+  if (isSettings && memoryStore.settings) return memoryStore.settings;
 
   try {
     if (fs.existsSync(file)) {
       const content = fs.readFileSync(file, 'utf-8');
-      const parsed = JSON.parse(content || '[]');
-      if (Array.isArray(parsed) && parsed.length > 0) {
+      const parsed = JSON.parse(content || (isSettings ? '{}' : '[]'));
+      if (parsed && typeof parsed === 'object') {
         if (isProducts) memoryStore.products = parsed;
         if (isCategories) memoryStore.categories = parsed;
         if (isUsers) memoryStore.users = parsed;
+        if (isSettings) memoryStore.settings = parsed;
         return parsed;
       }
     }
@@ -55,6 +60,7 @@ function readJSON(file, fallback = []) {
   if (isProducts) memoryStore.products = result;
   if (isCategories) memoryStore.categories = result;
   if (isUsers) memoryStore.users = result;
+  if (isSettings) memoryStore.settings = result;
   return result;
 }
 
@@ -62,10 +68,12 @@ function writeJSON(file, data) {
   const isProducts = file.includes('products.json');
   const isCategories = file.includes('categories.json');
   const isUsers = file.includes('users.json');
+  const isSettings = file.includes('settings.json');
 
   if (isProducts) memoryStore.products = data;
   if (isCategories) memoryStore.categories = data;
   if (isUsers) memoryStore.users = data;
+  if (isSettings) memoryStore.settings = data;
 
   try {
     fs.writeFileSync(file, JSON.stringify(data, null, 2), 'utf-8');
@@ -215,6 +223,33 @@ export async function handleApiRequest(req, res) {
     const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : authHeader.trim();
     if (token) activeSessions.delete(token);
     return sendJSON(200, { success: true, message: 'Logged out successfully' });
+  }
+
+  // 3.5. SETTINGS: GET (Public - retrieves main hero image and plaque details)
+  if (pathname === '/api/settings' && method === 'GET') {
+    const settings = readJSON(SETTINGS_FILE, defaultSettings);
+    return sendJSON(200, settings);
+  }
+
+  // 3.6. SETTINGS: POST / PUT (Admin only - update hero image and plaque)
+  if (pathname === '/api/settings' && (method === 'POST' || method === 'PUT')) {
+    if (!verifyAuthToken(req)) return sendJSON(401, { error: 'Authentication required' });
+
+    const body = await parseBody(req);
+    const currentSettings = readJSON(SETTINGS_FILE, defaultSettings);
+
+    const updatedSettings = {
+      ...currentSettings,
+      heroImage: body.heroImage !== undefined && body.heroImage !== '' ? body.heroImage.trim() : currentSettings.heroImage,
+      heroChapter: body.heroChapter !== undefined && body.heroChapter !== '' ? body.heroChapter.trim() : currentSettings.heroChapter,
+      heroSubtitle: body.heroSubtitle !== undefined && body.heroSubtitle !== '' ? body.heroSubtitle.trim() : currentSettings.heroSubtitle,
+      heroName: body.heroName !== undefined && body.heroName !== '' ? body.heroName.trim() : currentSettings.heroName,
+      heroDate: body.heroDate !== undefined && body.heroDate !== '' ? body.heroDate.trim() : currentSettings.heroDate,
+      updatedAt: new Date().toISOString()
+    };
+
+    writeJSON(SETTINGS_FILE, updatedSettings);
+    return sendJSON(200, { success: true, settings: updatedSettings });
   }
 
   // 4. CATEGORIES: GET (Public)

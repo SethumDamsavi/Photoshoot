@@ -7,6 +7,7 @@
 // Backend API Endpoints
 const PRODUCTS_API = '/api/products';
 const CATEGORIES_API = '/api/categories';
+const SETTINGS_API = '/api/settings';
 
 // SVG Icons
 const ICONS = {
@@ -30,8 +31,68 @@ let bookmarkedIds = new Set(JSON.parse(localStorage.getItem('birthday_favorites'
 let currentLightboxIndex = -1;
 let filteredProducts = [];
 
+// Settings State
+let siteSettings = {
+  heroImage: 'assets/portrait.jpg',
+  heroChapter: 'Chapter 21',
+  heroSubtitle: 'Milestone Portrait',
+  heroName: 'Raveesha',
+  heroDate: 'October 2026'
+};
+
+function applyHeroSettings(settings) {
+  if (!settings) return;
+  siteSettings = { ...siteSettings, ...settings };
+
+  const heroImg = document.getElementById('profile-avatar-img');
+  if (heroImg && settings.heroImage) {
+    heroImg.src = settings.heroImage;
+  }
+
+  const chapterEl = document.getElementById('hero-plaque-chapter');
+  if (chapterEl && settings.heroChapter) {
+    chapterEl.textContent = settings.heroChapter;
+  }
+
+  const subtitleEl = document.getElementById('hero-plaque-subtitle');
+  if (subtitleEl && settings.heroSubtitle) {
+    subtitleEl.textContent = settings.heroSubtitle;
+  }
+
+  const nameEl = document.getElementById('hero-plaque-name');
+  if (nameEl && settings.heroName) {
+    nameEl.textContent = settings.heroName;
+  }
+
+  const dateEl = document.getElementById('hero-plaque-date');
+  if (dateEl && settings.heroDate) {
+    dateEl.textContent = settings.heroDate;
+  }
+}
+
+async function fetchSettings() {
+  try {
+    const res = await fetch(SETTINGS_API);
+    if (res.ok) {
+      const data = await res.json();
+      applyHeroSettings(data);
+      try {
+        localStorage.setItem('birthday_settings_cache', JSON.stringify(data));
+      } catch (_) {}
+    }
+  } catch (err) {
+    console.warn('Could not load dynamic settings:', err.message);
+  }
+}
+
 // ================= INITIALIZATION =================
 document.addEventListener('DOMContentLoaded', () => {
+  // Load cached settings immediately to prevent flash
+  try {
+    const cachedSettings = localStorage.getItem('birthday_settings_cache');
+    if (cachedSettings) applyHeroSettings(JSON.parse(cachedSettings));
+  } catch (_) {}
+
   setupEventListeners();
   startCountdownTimer();
   initPetals();
@@ -172,6 +233,8 @@ async function loadBackendData() {
     await fetchCategories();
     // 2. Fetch photoshoot photos
     await fetchProducts();
+    // 3. Fetch hero cover settings
+    await fetchSettings();
 
     // Cache locally
     try {

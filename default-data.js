@@ -168,3 +168,12 @@ export const defaultUsers = [
     "name": "Raveesha"
   }
 ];
+
+export const defaultSettings = {
+  "heroImage": "assets/portrait.jpg",
+  "heroChapter": "Chapter 21",
+  "heroSubtitle": "Milestone Portrait",
+  "heroName": "RAVEESHA",
+  "heroDate": "OCTOBER 2026"
+};
+

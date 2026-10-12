@@ -67,6 +67,31 @@ const addCategoryForm = document.getElementById('add-category-form');
 const newCategoryNameInput = document.getElementById('new-category-name');
 const categoryListBody = document.getElementById('category-list-body');
 
+// Hero Settings Modal & Elements
+let currentHeroSettings = {
+  heroImage: 'assets/portrait.jpg',
+  heroChapter: 'Chapter 21',
+  heroSubtitle: 'Milestone Portrait',
+  heroName: 'RAVEESHA',
+  heroDate: 'OCTOBER 2026'
+};
+
+const openHeroSettingsBtn = document.getElementById('open-hero-settings-btn');
+const heroSettingsModal = document.getElementById('hero-settings-modal');
+const heroSettingsModalBackdrop = document.getElementById('hero-settings-modal-backdrop');
+const closeHeroSettingsModalBtn = document.getElementById('close-hero-settings-modal');
+const cancelHeroSettingsBtn = document.getElementById('cancel-hero-settings-btn');
+const heroSettingsForm = document.getElementById('hero-settings-form');
+const heroPreviewImg = document.getElementById('hero-preview-img');
+const heroDropZone = document.getElementById('hero-drop-zone');
+const heroFileInput = document.getElementById('hero-file-input');
+const heroBrowseLink = document.getElementById('hero-browse-link');
+const heroImageUrlInput = document.getElementById('hero-image-url-input');
+const heroChapterInput = document.getElementById('hero-chapter-input');
+const heroSubtitleInput = document.getElementById('hero-subtitle-input');
+const heroNameInput = document.getElementById('hero-name-input');
+const heroDateInput = document.getElementById('hero-date-input');
+
 // Toast
 const toast = document.getElementById('toast');
 const toastMessage = document.getElementById('toast-message');
@@ -264,11 +289,43 @@ function setupEventListeners() {
     addCategoryForm.addEventListener('submit', handleAddCategory);
   }
 
+  // Hero Settings Modal Controls
+  if (openHeroSettingsBtn) {
+    openHeroSettingsBtn.addEventListener('click', openHeroSettingsModal);
+  }
+
+  if (closeHeroSettingsModalBtn) {
+    closeHeroSettingsModalBtn.addEventListener('click', closeHeroSettingsModal);
+  }
+
+  if (cancelHeroSettingsBtn) {
+    cancelHeroSettingsBtn.addEventListener('click', closeHeroSettingsModal);
+  }
+
+  if (heroSettingsModalBackdrop) {
+    heroSettingsModalBackdrop.addEventListener('click', closeHeroSettingsModal);
+  }
+
+  if (heroSettingsForm) {
+    heroSettingsForm.addEventListener('submit', handleHeroSettingsSubmit);
+  }
+
+  if (heroImageUrlInput) {
+    heroImageUrlInput.addEventListener('input', () => {
+      if (heroPreviewImg) {
+        heroPreviewImg.src = heroImageUrlInput.value.trim() || 'assets/portrait.jpg';
+      }
+    });
+  }
+
+  setupHeroImageUploader();
+
   // Esc key close modals
   window.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
       closeProductModal();
       closeCategoryModal();
+      closeHeroSettingsModal();
     }
   });
 
@@ -304,6 +361,7 @@ function handleLogout() {
 async function loadDashboardData() {
   await fetchCategories();
   await fetchProducts();
+  await fetchHeroSettings();
 }
 
 async function fetchCategories() {
@@ -798,6 +856,167 @@ async function handleDeleteCategory(id) {
     }
   } catch (err) {
     alert(`Delete error: ${err.message}`);
+  }
+}
+
+// ================= HERO SETTINGS (MAIN IMAGE & PLAQUE) =================
+async function fetchHeroSettings() {
+  try {
+    const res = await fetch('/api/settings');
+    if (res.ok) {
+      currentHeroSettings = await res.json();
+      populateHeroSettingsForm();
+    }
+  } catch (err) {
+    console.warn('Could not load hero settings:', err);
+  }
+}
+
+function populateHeroSettingsForm() {
+  if (heroImageUrlInput) heroImageUrlInput.value = currentHeroSettings.heroImage || 'assets/portrait.jpg';
+  if (heroPreviewImg) heroPreviewImg.src = currentHeroSettings.heroImage || 'assets/portrait.jpg';
+  if (heroChapterInput) heroChapterInput.value = currentHeroSettings.heroChapter || 'Chapter 21';
+  if (heroSubtitleInput) heroSubtitleInput.value = currentHeroSettings.heroSubtitle || 'Milestone Portrait';
+  if (heroNameInput) heroNameInput.value = currentHeroSettings.heroName || 'RAVEESHA';
+  if (heroDateInput) heroDateInput.value = currentHeroSettings.heroDate || 'OCTOBER 2026';
+}
+
+function openHeroSettingsModal() {
+  populateHeroSettingsForm();
+  if (heroSettingsModal) {
+    heroSettingsModal.classList.add('open');
+    heroSettingsModal.setAttribute('aria-hidden', 'false');
+  }
+}
+
+function closeHeroSettingsModal() {
+  if (heroSettingsModal) {
+    heroSettingsModal.classList.remove('open');
+    heroSettingsModal.setAttribute('aria-hidden', 'true');
+  }
+}
+
+function setupHeroImageUploader() {
+  if (!heroDropZone || !heroFileInput) return;
+
+  // Click browse
+  heroDropZone.addEventListener('click', (e) => {
+    if (e.target !== heroFileInput) {
+      heroFileInput.click();
+    }
+  });
+
+  if (heroBrowseLink) {
+    heroBrowseLink.addEventListener('click', (e) => {
+      e.stopPropagation();
+      heroFileInput.click();
+    });
+  }
+
+  // File chosen
+  heroFileInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (file) uploadHeroImageFile(file);
+  });
+
+  // Drag and drop
+  ['dragenter', 'dragover'].forEach(eventName => {
+    heroDropZone.addEventListener(eventName, (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      heroDropZone.classList.add('drag-active');
+    });
+  });
+
+  ['dragleave', 'drop'].forEach(eventName => {
+    heroDropZone.addEventListener(eventName, (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      heroDropZone.classList.remove('drag-active');
+    });
+  });
+
+  heroDropZone.addEventListener('drop', (e) => {
+    const file = e.dataTransfer?.files?.[0];
+    if (file) uploadHeroImageFile(file);
+  });
+}
+
+function uploadHeroImageFile(file) {
+  if (!file.type.startsWith('image/')) {
+    alert('Please upload an image file (PNG, JPG, WEBP).');
+    return;
+  }
+
+  showToast(`Uploading ${file.name}...`);
+  const reader = new FileReader();
+
+  reader.onload = async (e) => {
+    const dataUrl = e.target.result;
+    if (heroPreviewImg) heroPreviewImg.src = dataUrl;
+
+    try {
+      const res = await apiRequest('/api/upload', {
+        method: 'POST',
+        body: JSON.stringify({
+          dataUrl,
+          filename: file.name
+        })
+      });
+
+      const data = await res.json();
+      if (res.ok && data.success) {
+        if (heroImageUrlInput) heroImageUrlInput.value = data.url;
+        if (heroPreviewImg) heroPreviewImg.src = data.url;
+        showToast('Photo uploaded for main image!');
+      } else {
+        alert(`Upload error: ${data.error || 'Server error'}`);
+      }
+    } catch (err) {
+      alert(`Upload request failed: ${err.message}`);
+    }
+  };
+
+  reader.readAsDataURL(file);
+}
+
+async function handleHeroSettingsSubmit(e) {
+  e.preventDefault();
+  const saveBtn = document.getElementById('save-hero-settings-btn');
+  if (saveBtn) {
+    saveBtn.disabled = true;
+    saveBtn.innerHTML = '<span>Saving...</span>';
+  }
+
+  try {
+    const payload = {
+      heroImage: heroImageUrlInput ? heroImageUrlInput.value.trim() : '',
+      heroChapter: heroChapterInput ? heroChapterInput.value.trim() : '',
+      heroSubtitle: heroSubtitleInput ? heroSubtitleInput.value.trim() : '',
+      heroName: heroNameInput ? heroNameInput.value.trim() : '',
+      heroDate: heroDateInput ? heroDateInput.value.trim() : ''
+    };
+
+    const res = await apiRequest('/api/settings', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+
+    const data = await res.json();
+    if (res.ok && data.success) {
+      currentHeroSettings = data.settings;
+      showToast('Main hero image and details updated successfully!');
+      closeHeroSettingsModal();
+    } else {
+      alert(`Error: ${data.error || 'Failed to update settings'}`);
+    }
+  } catch (err) {
+    alert(`Error updating settings: ${err.message}`);
+  } finally {
+    if (saveBtn) {
+      saveBtn.disabled = false;
+      saveBtn.innerHTML = '<span>Save Main Image</span>';
+    }
   }
 }
 

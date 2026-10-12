@@ -153,6 +153,15 @@
               <span>Manage Albums</span>
             </button>
 
+            <button id="open-hero-settings-btn" class="btn btn-secondary">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                <circle cx="8.5" cy="8.5" r="1.5"/>
+                <polyline points="21 15 16 10 5 21"/>
+              </svg>
+              <span>Change Main Image</span>
+            </button>
+
             <button id="open-add-product-btn" class="btn btn-primary">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
                 <line x1="12" y1="5" x2="12" y2="19"/>
@@ -339,6 +348,80 @@
           <!-- Populated via JS -->
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- ================= 5. CHANGE MAIN HERO IMAGE MODAL ================= -->
+  <div id="hero-settings-modal" class="modal-overlay" aria-hidden="true" role="dialog">
+    <div class="modal-backdrop" id="hero-settings-modal-backdrop"></div>
+    <div class="modal-card" style="max-width: 540px;">
+      <div class="modal-header">
+        <div class="modal-header-titles">
+          <h2 class="modal-title">Change Main Hero Image</h2>
+          <p class="modal-subtitle" style="font-size: 0.85rem; color: #916f7c; margin-top: 4px;">Update the primary arched portrait photo on your live home gallery.</p>
+        </div>
+        <button id="close-hero-settings-modal" class="modal-close-btn" aria-label="Close modal">✕</button>
+      </div>
+
+      <form id="hero-settings-form" class="product-form" style="padding-top: 0.5rem;">
+        <!-- Live Image Preview inside Arch Frame -->
+        <div class="form-group" style="text-align: center;">
+          <label class="form-label" style="font-weight: 600;">Main Arch Portrait Preview</label>
+          <div style="display: flex; justify-content: center; margin: 10px 0 16px;">
+            <div style="width: 160px; height: 215px; border-radius: 80px 80px 14px 14px; overflow: hidden; border: 3px solid #ffccd9; box-shadow: 0 8px 24px rgba(222, 75, 117, 0.22); background: #fff0f4;">
+              <img id="hero-preview-img" src="assets/portrait.jpg" alt="Hero Portrait Preview" style="width: 100%; height: 100%; object-fit: cover; display: block;">
+            </div>
+          </div>
+        </div>
+
+        <!-- File Upload / Drop Area -->
+        <div class="form-group">
+          <label class="form-label">Upload New Photo File</label>
+          <div class="drop-zone" id="hero-drop-zone" style="padding: 1.25rem 1rem; cursor: pointer;">
+            <input type="file" id="hero-file-input" accept="image/*" class="file-input-hidden" style="display: none;">
+            <div class="drop-zone-content">
+              <span class="drop-icon" style="font-size: 1.75rem;">🌸</span>
+              <p class="drop-text">Drag & drop photo here, or <span id="hero-browse-link" style="color: #de4b75; font-weight: 600; text-decoration: underline;">click to browse</span></p>
+              <span class="drop-hint">PNG, JPG, or WEBP</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="hero-image-url-input" class="form-label">Or Image URL / Path</label>
+          <input type="text" id="hero-image-url-input" class="form-input" placeholder="assets/portrait.jpg or uploads/..." value="assets/portrait.jpg" required>
+        </div>
+
+        <!-- Plaque Details -->
+        <div class="form-grid-2">
+          <div class="form-group">
+            <label for="hero-chapter-input" class="form-label">Chapter Badge</label>
+            <input type="text" id="hero-chapter-input" class="form-input" placeholder="Chapter 21" value="Chapter 21">
+          </div>
+          <div class="form-group">
+            <label for="hero-subtitle-input" class="form-label">Subtitle</label>
+            <input type="text" id="hero-subtitle-input" class="form-input" placeholder="Milestone Portrait" value="Milestone Portrait">
+          </div>
+        </div>
+
+        <div class="form-grid-2">
+          <div class="form-group">
+            <label for="hero-name-input" class="form-label">Honoree Name</label>
+            <input type="text" id="hero-name-input" class="form-input" placeholder="RAVEESHA" value="RAVEESHA">
+          </div>
+          <div class="form-group">
+            <label for="hero-date-input" class="form-label">Date / Month</label>
+            <input type="text" id="hero-date-input" class="form-input" placeholder="OCTOBER 2026" value="OCTOBER 2026">
+          </div>
+        </div>
+
+        <div class="modal-footer" style="margin-top: 1.5rem; display: flex; justify-content: flex-end; gap: 10px;">
+          <button type="button" id="cancel-hero-settings-btn" class="btn btn-secondary">Cancel</button>
+          <button type="submit" id="save-hero-settings-btn" class="btn btn-primary">
+            <span>Save Main Image</span>
+          </button>
+        </div>
+      </form>
     </div>
   </div>
 
