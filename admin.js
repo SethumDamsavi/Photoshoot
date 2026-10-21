@@ -736,12 +736,6 @@ async function handleProductFormSubmit(e) {
 
       broadcastUpdate('PRODUCTS_UPDATED', { products: allProducts });
 
-      // Re-hydrate server store so cold lambdas retain latest photos
-      fetch('/api/sync', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ products: allProducts })
-      }).catch(() => {});
     } else {
       alert(`Error saving photo: ${data.error || 'Unknown error'}`);
     }
@@ -778,11 +772,6 @@ async function handleDeleteProduct(id) {
 
       broadcastUpdate('PRODUCTS_UPDATED', { products: allProducts });
 
-      fetch('/api/sync', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ products: allProducts })
-      }).catch(() => {});
     } else {
       alert(`Failed to delete: ${data.error || 'Unknown error'}`);
     }
@@ -1190,12 +1179,6 @@ async function handleHeroSettingsSubmit(e) {
 
       broadcastUpdate('SETTINGS_UPDATED', { settings: data.settings });
 
-      // Re-hydrate server via sync endpoint
-      fetch('/api/sync', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ settings: data.settings })
-      }).catch(() => {});
 
       showToast('Main hero image updated permanently!');
       closeHeroSettingsModal();
@@ -1332,12 +1315,6 @@ async function handleStorySettingsSubmit(e) {
 
       broadcastUpdate('SETTINGS_UPDATED', { settings: data.settings });
 
-      // Re-hydrate server via sync endpoint
-      fetch('/api/sync', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ settings: data.settings })
-      }).catch(() => {});
 
       showToast('Story polaroid photo updated permanently!');
       closeStorySettingsModal();

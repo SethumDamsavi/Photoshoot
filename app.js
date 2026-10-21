@@ -92,11 +92,15 @@ function applyHeroSettings(settings) {
   }
 }
 
+let lastSettingsText = '';
 async function fetchSettings() {
   try {
     const res = await fetch(SETTINGS_API, { cache: 'no-store' });
     if (res.ok) {
-      const data = await res.json();
+      const text = await res.text();
+      if (text === lastSettingsText) return;
+      lastSettingsText = text;
+      const data = JSON.parse(text);
       applyHeroSettings(data);
       try {
         localStorage.setItem('birthday_settings_cache', JSON.stringify(data));
@@ -281,6 +285,17 @@ async function loadBackendData() {
   }
 }
 
+// Keep the live site in step with Admin Studio changes made on any device
+const LIVE_REFRESH_MS = 20000;
+async function refreshLiveData() {
+  if (document.hidden) return;
+  try {
+    await Promise.all([fetchCategories(), fetchProducts(), fetchSettings()]);
+  } catch (_) {}
+}
+setInterval(refreshLiveData, LIVE_REFRESH_MS);
+document.addEventListener('visibilitychange', refreshLiveData);
+
 // Fetch photo albums
 async function fetchCategories() {
   const response = await fetch(CATEGORIES_API, { cache: 'no-store' });
@@ -290,11 +305,15 @@ async function fetchCategories() {
   renderCategoryTabs();
 }
 
-// Fetch birthday photos directly from live backend
+// Fetch birthday photos directly from live backend (skips re-render when nothing changed)
+let lastProductsText = '';
 async function fetchProducts() {
   const response = await fetch(PRODUCTS_API, { cache: 'no-store' });
   if (!response.ok) throw new Error(`HTTP ${response.status} fetching photos`);
-  const rawProducts = await response.json();
+  const text = await response.text();
+  if (text === lastProductsText) return;
+  lastProductsText = text;
+  const rawProducts = JSON.parse(text);
 
   if (Array.isArray(rawProducts) && rawProducts.length > 0) {
     products = mapRawProducts(rawProducts);

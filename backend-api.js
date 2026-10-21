@@ -16,121 +16,106 @@ try {
   if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 } catch (_) {}
 
-// Active in-memory session tokens with expiry (24 hours)
-const activeSessions = new Map();
+// ================= PERSISTENT STORAGE =================
+// On Vercel every function instance has its own memory and /tmp, so data written
+// there is invisible to other instances and lost on cold start. When an Upstash
+// Redis store is connected (Vercel Storage → Upstash), all instances share it.
+// Without one (local dev), data lives in the data/*.json files.
+const REDIS_URL = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL || '';
+const REDIS_TOKEN = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN || '';
+const USE_REDIS = Boolean(REDIS_URL && REDIS_TOKEN);
+const REDIS_PREFIX = 'birthday:';
 
-// In-memory data store for serverless resilience
-const memoryStore = {
-  products: null,
-  categories: null,
-  users: null,
-  settings: null
-};
+async function redisCommand(command) {
+  const res = await fetch(REDIS_URL, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${REDIS_TOKEN}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(command)
+  });
+  const data = await res.json();
+  if (!res.ok || data.error) throw new Error(`Redis error: ${data.error || res.status}`);
+  return data.result;
+}
 
-function readJSON(file, fallback = []) {
-  const isProducts = file.includes('products.json');
-  const isCategories = file.includes('categories.json');
-  const isUsers = file.includes('users.json');
-  const isSettings = file.includes('settings.json');
+function defaultsFor(file) {
+  if (file === PRODUCTS_FILE) return defaultProducts;
+  if (file === CATEGORIES_FILE) return defaultCategories;
+  if (file === USERS_FILE) return defaultUsers;
+  return defaultSettings;
+}
 
-  const defaultData = isProducts ? defaultProducts : isCategories ? defaultCategories : isUsers ? defaultUsers : isSettings ? defaultSettings : fallback;
-
-  // 1. Check in-memory store first
-  if (isProducts && memoryStore.products) return memoryStore.products;
-  if (isCategories && memoryStore.categories) return memoryStore.categories;
-  if (isUsers && memoryStore.users) return memoryStore.users;
-  if (isSettings && memoryStore.settings) return memoryStore.settings;
-
-  // 2. Check /tmp/data first (contains latest runtime updates in serverless)
-  try {
-    const tmpFile = path.join('/tmp', 'data', path.basename(file));
-    if (fs.existsSync(tmpFile)) {
-      const content = fs.readFileSync(tmpFile, 'utf-8');
-      const parsed = JSON.parse(content || (isSettings ? '{}' : '[]'));
-      if (parsed && typeof parsed === 'object') {
-        if (isProducts) memoryStore.products = parsed;
-        if (isCategories) memoryStore.categories = parsed;
-        if (isUsers) memoryStore.users = parsed;
-        if (isSettings) memoryStore.settings = parsed;
-        return parsed;
-      }
-    }
-  } catch (_) {}
-
-  // 3. Check workspace bundled file
+function readLocalJSON(file) {
   try {
     if (fs.existsSync(file)) {
-      const content = fs.readFileSync(file, 'utf-8');
-      const parsed = JSON.parse(content || (isSettings ? '{}' : '[]'));
-      if (parsed && typeof parsed === 'object') {
-        if (isProducts) memoryStore.products = parsed;
-        if (isCategories) memoryStore.categories = parsed;
-        if (isUsers) memoryStore.users = parsed;
-        if (isSettings) memoryStore.settings = parsed;
-        return parsed;
-      }
+      const parsed = JSON.parse(fs.readFileSync(file, 'utf-8'));
+      if (parsed && typeof parsed === 'object') return parsed;
     }
   } catch (err) {
     console.warn(`File read fallback for ${file}:`, err.message);
   }
-
-  // 4. Fallback to default bundled dataset
-  const result = JSON.parse(JSON.stringify(defaultData));
-  if (isProducts) memoryStore.products = result;
-  if (isCategories) memoryStore.categories = result;
-  if (isUsers) memoryStore.users = result;
-  if (isSettings) memoryStore.settings = result;
-  return result;
+  return JSON.parse(JSON.stringify(defaultsFor(file)));
 }
 
+async function readJSON(file) {
+  if (!USE_REDIS) return readLocalJSON(file);
+
+  const key = REDIS_PREFIX + path.basename(file, '.json');
+  const stored = await redisCommand(['GET', key]);
+  if (stored) return JSON.parse(stored);
+
+  // First run: seed the shared store from the bundled dataset
+  const seed = readLocalJSON(file);
+  await redisCommand(['SET', key, JSON.stringify(seed), 'NX']);
+  return seed;
+}
+
+async function writeJSON(file, data) {
+  if (USE_REDIS) {
+    await redisCommand(['SET', REDIS_PREFIX + path.basename(file, '.json'), JSON.stringify(data)]);
+    return true;
+  }
+  try {
+    fs.writeFileSync(file, JSON.stringify(data, null, 2), 'utf-8');
+  } catch (err) {
+    throw new Error('Storage is read-only. Connect an Upstash Redis store to this Vercel project so changes can be saved.');
+  }
+  syncDefaultDataFile();
+  return true;
+}
+
+// Keep default-data.js in step with data/*.json during local development
 function syncDefaultDataFile() {
   try {
     const defaultDataPath = path.resolve(process.cwd(), 'default-data.js');
-    if (fs.existsSync(defaultDataPath)) {
-      const cats = memoryStore.categories || readJSON(CATEGORIES_FILE, defaultCategories);
-      const prods = memoryStore.products || readJSON(PRODUCTS_FILE, defaultProducts);
-      const users = memoryStore.users || readJSON(USERS_FILE, defaultUsers);
-      const sets = memoryStore.settings || readJSON(SETTINGS_FILE, defaultSettings);
-
-      const content = `export const defaultCategories = ${JSON.stringify(cats, null, 2)};\n\n` +
-        `export const defaultProducts = ${JSON.stringify(prods, null, 2)};\n\n` +
-        `export const defaultUsers = ${JSON.stringify(users, null, 2)};\n\n` +
-        `export const defaultSettings = ${JSON.stringify(sets, null, 2)};\n`;
-
-      fs.writeFileSync(defaultDataPath, content, 'utf-8');
-    }
+    if (!fs.existsSync(defaultDataPath)) return;
+    const content = `export const defaultCategories = ${JSON.stringify(readLocalJSON(CATEGORIES_FILE), null, 2)};\n\n` +
+      `export const defaultProducts = ${JSON.stringify(readLocalJSON(PRODUCTS_FILE), null, 2)};\n\n` +
+      `export const defaultUsers = ${JSON.stringify(readLocalJSON(USERS_FILE), null, 2)};\n\n` +
+      `export const defaultSettings = ${JSON.stringify(readLocalJSON(SETTINGS_FILE), null, 2)};\n`;
+    fs.writeFileSync(defaultDataPath, content, 'utf-8');
   } catch (err) {
     console.warn('Could not sync default-data.js:', err.message);
   }
 }
 
-function writeJSON(file, data) {
-  const isProducts = file.includes('products.json');
-  const isCategories = file.includes('categories.json');
-  const isUsers = file.includes('users.json');
-  const isSettings = file.includes('settings.json');
+// Store uploaded images in Vercel Blob when connected (Vercel Storage → Blob),
+// so the photo list holds short URLs instead of multi-megabyte base64 strings.
+async function storeUploadedImage(buffer, mimeType, safeFilename, dataUrl) {
+  if (process.env.BLOB_READ_WRITE_TOKEN) {
+    const { put } = await import('@vercel/blob');
+    const blob = await put(`uploads/${safeFilename}`, buffer, {
+      access: 'public',
+      contentType: mimeType,
+      addRandomSuffix: true
+    });
+    return blob.url;
+  }
 
-  if (isProducts) memoryStore.products = data;
-  if (isCategories) memoryStore.categories = data;
-  if (isUsers) memoryStore.users = data;
-  if (isSettings) memoryStore.settings = data;
-
-  // 1. Always write to /tmp in serverless environments
   try {
-    const tmpDir = path.join('/tmp', 'data');
-    if (!fs.existsSync(tmpDir)) fs.mkdirSync(tmpDir, { recursive: true });
-    fs.writeFileSync(path.join(tmpDir, path.basename(file)), JSON.stringify(data, null, 2), 'utf-8');
+    if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+    fs.writeFileSync(path.join(UPLOADS_DIR, safeFilename), buffer);
   } catch (_) {}
-
-  // 2. Always write to local file if writable
-  try {
-    fs.writeFileSync(file, JSON.stringify(data, null, 2), 'utf-8');
-  } catch (_) {}
-
-  // 3. Keep default-data.js synchronized for instant bundle updates
-  syncDefaultDataFile();
-
-  return true;
+  return dataUrl;
 }
 
 // Authentication Helpers
@@ -145,21 +130,36 @@ function verifyPassword(inputPassword, user) {
   }
 }
 
+// Session tokens are signed (not kept in memory) so every serverless instance accepts them
+const SESSION_TTL_MS = 24 * 60 * 60 * 1000;
+const TOKEN_SECRET = process.env.ADMIN_TOKEN_SECRET || REDIS_TOKEN || process.env.BLOB_READ_WRITE_TOKEN ||
+  crypto.createHash('sha256').update(JSON.stringify(defaultUsers)).digest('hex');
+
+function signToken(user) {
+  const payload = Buffer.from(JSON.stringify({ user, expiresAt: Date.now() + SESSION_TTL_MS })).toString('base64url');
+  const signature = crypto.createHmac('sha256', TOKEN_SECRET).update(payload).digest('base64url');
+  return `${payload}.${signature}`;
+}
+
 export function verifyAuthToken(req) {
   const authHeader = req.headers['authorization'] || '';
   const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : authHeader.trim();
-  if (!token) return null;
+  if (!token || !token.includes('.')) return null;
 
-  const session = activeSessions.get(token);
-  if (!session) return null;
-
-  // Check 24 hour expiry
-  if (Date.now() > session.expiresAt) {
-    activeSessions.delete(token);
+  const [payload, signature] = token.split('.');
+  const expected = crypto.createHmac('sha256', TOKEN_SECRET).update(payload).digest('base64url');
+  if (signature.length !== expected.length ||
+      !crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) {
     return null;
   }
 
-  return session.user;
+  try {
+    const session = JSON.parse(Buffer.from(payload, 'base64url').toString('utf-8'));
+    if (Date.now() > session.expiresAt) return null;
+    return session.user;
+  } catch (_) {
+    return null;
+  }
 }
 
 // Parse Request Body Helper (Handles both stream and pre-parsed Vercel bodies)
@@ -234,7 +234,7 @@ export async function handleApiRequest(req, res) {
   // 1. AUTH: Login
   if (pathname === '/api/auth/login' && method === 'POST') {
     const { username, password } = await parseBody(req);
-    const users = readJSON(USERS_FILE);
+    const users = await readJSON(USERS_FILE);
     const user = users.find(u => u.username.toLowerCase() === (username || '').trim().toLowerCase());
 
     if (!user || !verifyPassword(password, user)) {
@@ -244,12 +244,8 @@ export async function handleApiRequest(req, res) {
       });
     }
 
-    // Generate secure session token
-    const token = crypto.randomBytes(32).toString('hex');
-    activeSessions.set(token, {
-      user: { username: user.username, name: user.name, role: user.role },
-      expiresAt: Date.now() + 24 * 60 * 60 * 1000
-    });
+    // Generate signed session token
+    const token = signToken({ username: user.username, name: user.name, role: user.role });
 
     return sendJSON(200, {
       success: true,
@@ -267,15 +263,12 @@ export async function handleApiRequest(req, res) {
 
   // 3. AUTH: Logout
   if (pathname === '/api/auth/logout' && method === 'POST') {
-    const authHeader = req.headers['authorization'] || '';
-    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : authHeader.trim();
-    if (token) activeSessions.delete(token);
     return sendJSON(200, { success: true, message: 'Logged out successfully' });
   }
 
   // 3.5. SETTINGS: GET (Public - retrieves main hero image and plaque details)
   if (pathname === '/api/settings' && method === 'GET') {
-    const settings = readJSON(SETTINGS_FILE, defaultSettings);
+    const settings = await readJSON(SETTINGS_FILE);
     return sendJSON(200, settings);
   }
 
@@ -284,7 +277,7 @@ export async function handleApiRequest(req, res) {
     if (!verifyAuthToken(req)) return sendJSON(401, { error: 'Authentication required' });
 
     const body = await parseBody(req);
-    const currentSettings = readJSON(SETTINGS_FILE, defaultSettings);
+    const currentSettings = await readJSON(SETTINGS_FILE);
 
     const updatedSettings = {
       ...currentSettings,
@@ -300,15 +293,15 @@ export async function handleApiRequest(req, res) {
       updatedAt: new Date().toISOString()
     };
 
-    writeJSON(SETTINGS_FILE, updatedSettings);
+    await writeJSON(SETTINGS_FILE, updatedSettings);
     return sendJSON(200, { success: true, settings: updatedSettings });
   }
 
   // 3.7. ARCHIVE SYNC: GET & POST (Bi-directional persistence across serverless lifecycles)
   if (pathname === '/api/sync' && method === 'GET') {
-    const products = readJSON(PRODUCTS_FILE);
-    const categories = readJSON(CATEGORIES_FILE);
-    const settings = readJSON(SETTINGS_FILE, defaultSettings);
+    const products = await readJSON(PRODUCTS_FILE);
+    const categories = await readJSON(CATEGORIES_FILE);
+    const settings = await readJSON(SETTINGS_FILE);
     return sendJSON(200, {
       success: true,
       products,
@@ -319,21 +312,22 @@ export async function handleApiRequest(req, res) {
   }
 
   if (pathname === '/api/sync' && method === 'POST') {
+    if (!verifyAuthToken(req)) return sendJSON(401, { error: 'Authentication required' });
     const body = await parseBody(req);
     if (body.settings && typeof body.settings === 'object') {
-      const current = readJSON(SETTINGS_FILE, defaultSettings);
+      const current = await readJSON(SETTINGS_FILE);
       const updated = {
         ...current,
         ...body.settings,
         updatedAt: body.settings.updatedAt || new Date().toISOString()
       };
-      writeJSON(SETTINGS_FILE, updated);
+      await writeJSON(SETTINGS_FILE, updated);
     }
     if (Array.isArray(body.products) && body.products.length > 0) {
-      writeJSON(PRODUCTS_FILE, body.products);
+      await writeJSON(PRODUCTS_FILE, body.products);
     }
     if (Array.isArray(body.categories) && body.categories.length > 0) {
-      writeJSON(CATEGORIES_FILE, body.categories);
+      await writeJSON(CATEGORIES_FILE, body.categories);
     }
     return sendJSON(200, {
       success: true,
@@ -344,8 +338,8 @@ export async function handleApiRequest(req, res) {
 
   // 4. CATEGORIES: GET (Public)
   if (pathname === '/api/categories' && method === 'GET') {
-    const categories = readJSON(CATEGORIES_FILE);
-    const products = readJSON(PRODUCTS_FILE);
+    const categories = await readJSON(CATEGORIES_FILE);
+    const products = await readJSON(PRODUCTS_FILE);
 
     const categoriesWithCount = categories.map(cat => ({
       ...cat,
@@ -362,7 +356,7 @@ export async function handleApiRequest(req, res) {
     const { name } = await parseBody(req);
     if (!name || !name.trim()) return sendJSON(400, { error: 'Category name is required' });
 
-    const categories = readJSON(CATEGORIES_FILE);
+    const categories = await readJSON(CATEGORIES_FILE);
     const slug = name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 
     if (categories.some(c => c.slug === slug)) {
@@ -371,7 +365,7 @@ export async function handleApiRequest(req, res) {
 
     const newCategory = { id: slug, name: name.trim(), slug };
     categories.push(newCategory);
-    writeJSON(CATEGORIES_FILE, categories);
+    await writeJSON(CATEGORIES_FILE, categories);
 
     return sendJSON(201, { success: true, category: newCategory });
   }
@@ -381,16 +375,16 @@ export async function handleApiRequest(req, res) {
     if (!verifyAuthToken(req)) return sendJSON(401, { error: 'Authentication required' });
     const catId = pathname.split('/')[3];
 
-    let categories = readJSON(CATEGORIES_FILE);
+    let categories = await readJSON(CATEGORIES_FILE);
     categories = categories.filter(c => c.id !== catId && c.slug !== catId);
-    writeJSON(CATEGORIES_FILE, categories);
+    await writeJSON(CATEGORIES_FILE, categories);
 
     return sendJSON(200, { success: true });
   }
 
   // 7. PHOTOS/PRODUCTS: GET (Public - with search, category & sort)
   if ((pathname === '/api/products' || pathname === '/api/photos') && method === 'GET') {
-    let products = readJSON(PRODUCTS_FILE);
+    let products = await readJSON(PRODUCTS_FILE);
     const category = urlObj.searchParams.get('category');
     const search = (urlObj.searchParams.get('search') || '').toLowerCase().trim();
     const sort = urlObj.searchParams.get('sort') || 'newest';
@@ -420,7 +414,7 @@ export async function handleApiRequest(req, res) {
   // 8. PHOTOS/PRODUCTS: GET single (Public)
   if ((pathname.match(/^\/api\/products\/\d+$/) || pathname.match(/^\/api\/photos\/\d+$/)) && method === 'GET') {
     const id = parseInt(pathname.split('/')[3], 10);
-    const products = readJSON(PRODUCTS_FILE);
+    const products = await readJSON(PRODUCTS_FILE);
     const product = products.find(p => p.id === id);
     if (!product) return sendJSON(404, { error: 'Photo not found' });
     return sendJSON(200, product);
@@ -433,8 +427,8 @@ export async function handleApiRequest(req, res) {
     const body = await parseBody(req);
     if (!body.name || !body.name.trim()) return sendJSON(400, { error: 'Photo title is required' });
 
-    const products = readJSON(PRODUCTS_FILE);
-    const categories = readJSON(CATEGORIES_FILE);
+    const products = await readJSON(PRODUCTS_FILE);
+    const categories = await readJSON(CATEGORIES_FILE);
 
     const categoryName = body.category || 'Portraits';
     const categorySlug = body.categorySlug || categoryName.toLowerCase().replace(/[^a-z0-9]+/g, '-');
@@ -442,7 +436,7 @@ export async function handleApiRequest(req, res) {
     // Auto-create category if new
     if (!categories.some(c => c.slug === categorySlug)) {
       categories.push({ id: categorySlug, name: categoryName, slug: categorySlug });
-      writeJSON(CATEGORIES_FILE, categories);
+      await writeJSON(CATEGORIES_FILE, categories);
     }
 
     const nextId = products.length > 0 ? Math.max(...products.map(p => p.id)) + 1 : 1;
@@ -464,7 +458,7 @@ export async function handleApiRequest(req, res) {
     };
 
     products.unshift(newProduct);
-    writeJSON(PRODUCTS_FILE, products);
+    await writeJSON(PRODUCTS_FILE, products);
 
     return sendJSON(201, { success: true, product: newProduct });
   }
@@ -475,7 +469,7 @@ export async function handleApiRequest(req, res) {
 
     const id = parseInt(pathname.split('/')[3], 10);
     const body = await parseBody(req);
-    const products = readJSON(PRODUCTS_FILE);
+    const products = await readJSON(PRODUCTS_FILE);
     const index = products.findIndex(p => p.id === id);
 
     if (index === -1) return sendJSON(404, { error: 'Photo not found' });
@@ -489,7 +483,7 @@ export async function handleApiRequest(req, res) {
       updatedAt: new Date().toISOString()
     };
 
-    writeJSON(PRODUCTS_FILE, products);
+    await writeJSON(PRODUCTS_FILE, products);
     return sendJSON(200, { success: true, product: products[index] });
   }
 
@@ -498,13 +492,13 @@ export async function handleApiRequest(req, res) {
     if (!verifyAuthToken(req)) return sendJSON(401, { error: 'Authentication required' });
 
     const id = parseInt(pathname.split('/')[3], 10);
-    let products = readJSON(PRODUCTS_FILE);
+    let products = await readJSON(PRODUCTS_FILE);
     const initialLen = products.length;
     products = products.filter(p => p.id !== id);
 
     if (products.length === initialLen) return sendJSON(404, { error: 'Product not found' });
 
-    writeJSON(PRODUCTS_FILE, products);
+    await writeJSON(PRODUCTS_FILE, products);
     return sendJSON(200, { success: true, message: 'Product deleted' });
   }
 
@@ -530,18 +524,11 @@ export async function handleApiRequest(req, res) {
         .replace(/[^a-zA-Z0-9_-]/g, '_')
         .substring(0, 30);
       const safeFilename = `${Date.now()}-${cleanName}.${ext}`;
-      const filePath = path.join(UPLOADS_DIR, safeFilename);
+      const url = await storeUploadedImage(buffer, mimeType, safeFilename, dataUrl);
 
-      // Save file locally if filesystem permits
-      try {
-        if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true });
-        fs.writeFileSync(filePath, buffer);
-      } catch (_) {}
-
-      // Always return dataUrl so preview and saved photo render reliably everywhere
       return sendJSON(200, {
         success: true,
-        url: dataUrl,
+        url,
         filename: safeFilename
       });
     } catch (err) {

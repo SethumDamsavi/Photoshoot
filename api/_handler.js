@@ -13,7 +13,7 @@ export default async function handler(req, res) {
     if (!res.writableEnded) {
       res.statusCode = 500;
       res.setHeader('Content-Type', 'application/json');
-      res.end(JSON.stringify({ error: 'Internal Server Error', message: err.message }));
+      res.end(JSON.stringify({ error: err.message || 'Internal Server Error' }));
     }
   }
 }
