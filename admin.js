@@ -10,6 +10,20 @@ let currentUser = null;
 let allProducts = [];
 let allCategories = [];
 
+// Real-time broadcast channel to update open gallery tabs instantly
+let adminSyncChannel = null;
+try {
+  adminSyncChannel = new BroadcastChannel('birthday_archive_channel');
+} catch (_) {}
+
+function broadcastUpdate(type, payload) {
+  try {
+    if (adminSyncChannel) {
+      adminSyncChannel.postMessage({ type, ...payload });
+    }
+  } catch (_) {}
+}
+
 // DOM References
 const loginSection = document.getElementById('login-section');
 const dashboardSection = document.getElementById('dashboard-section');
@@ -714,12 +728,13 @@ async function handleProductFormSubmit(e) {
       closeProductModal();
       await loadDashboardData();
 
-      // Persist permanently to localStorage and broadcast to open tabs
       try {
         localStorage.setItem('birthday_products_cache', JSON.stringify(allProducts));
         localStorage.setItem('birthday_products_updated_at', new Date().toISOString());
         window.dispatchEvent(new Event('storage'));
       } catch (_) {}
+
+      broadcastUpdate('PRODUCTS_UPDATED', { products: allProducts });
 
       // Re-hydrate server store so cold lambdas retain latest photos
       fetch('/api/sync', {
@@ -760,6 +775,8 @@ async function handleDeleteProduct(id) {
         localStorage.setItem('birthday_products_updated_at', new Date().toISOString());
         window.dispatchEvent(new Event('storage'));
       } catch (_) {}
+
+      broadcastUpdate('PRODUCTS_UPDATED', { products: allProducts });
 
       fetch('/api/sync', {
         method: 'POST',
@@ -1171,6 +1188,8 @@ async function handleHeroSettingsSubmit(e) {
         window.dispatchEvent(new Event('storage'));
       } catch (_) {}
 
+      broadcastUpdate('SETTINGS_UPDATED', { settings: data.settings });
+
       // Re-hydrate server via sync endpoint
       fetch('/api/sync', {
         method: 'POST',
@@ -1310,6 +1329,8 @@ async function handleStorySettingsSubmit(e) {
         localStorage.setItem('birthday_settings_updated_at', data.settings.updatedAt || new Date().toISOString());
         window.dispatchEvent(new Event('storage'));
       } catch (_) {}
+
+      broadcastUpdate('SETTINGS_UPDATED', { settings: data.settings });
 
       // Re-hydrate server via sync endpoint
       fetch('/api/sync', {

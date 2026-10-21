@@ -157,7 +157,23 @@ document.addEventListener('DOMContentLoaded', () => {
   loadBackendData();
 });
 
-// Listen for cross-tab updates from Admin Studio in real time
+// Listen for cross-tab updates from Admin Studio in real time (Storage Event + BroadcastChannel)
+let syncChannel = null;
+try {
+  syncChannel = new BroadcastChannel('birthday_archive_channel');
+  syncChannel.onmessage = (event) => {
+    if (event.data?.type === 'SETTINGS_UPDATED' && event.data.settings) {
+      applyHeroSettings(event.data.settings);
+    } else if (event.data?.type === 'PRODUCTS_UPDATED' && Array.isArray(event.data.products)) {
+      products = mapRawProducts(event.data.products);
+      renderCategoryTabs();
+      renderGallery();
+      renderHighlightReel();
+      updateStats();
+    }
+  };
+} catch (_) {}
+
 window.addEventListener('storage', (e) => {
   if (e.key === 'birthday_settings_cache' && e.newValue) {
     try { applyHeroSettings(JSON.parse(e.newValue)); } catch (_) {}
@@ -219,18 +235,12 @@ async function loadBackendData() {
   if (syncBtn) syncBtn.classList.add('syncing');
 
   try {
-    // 1. Fetch albums / categories
-    await fetchCategories();
-    // 2. Fetch photoshoot photos
-    await fetchProducts();
-    // 3. Fetch hero cover settings
-    await fetchSettings();
-
-    // Cache locally
-    try {
-      localStorage.setItem('birthday_products_cache', JSON.stringify(products));
-      localStorage.setItem('birthday_categories_cache', JSON.stringify(categories));
-    } catch (_) {}
+    // Parallel fetch: retrieve categories, photos, and cover settings concurrently
+    await Promise.all([
+      fetchCategories(),
+      fetchProducts(),
+      fetchSettings()
+    ]);
 
     setConnectionStatus('online', `Archive Live • ${products.length} Moments`);
     showToast(`Loaded ${products.length} birthday moments from archive!`);
@@ -242,7 +252,7 @@ async function loadBackendData() {
   } catch (error) {
     console.warn('Backend API connection note:', error.message);
     
-    // Check localStorage cache first
+    // Check localStorage cache first if network is unavailable
     try {
       const cachedProds = localStorage.getItem('birthday_products_cache');
       const cachedCats = localStorage.getItem('birthday_categories_cache');
@@ -280,43 +290,25 @@ async function fetchCategories() {
   renderCategoryTabs();
 }
 
-// Fetch birthday photos with anti-revert synchronization
+// Fetch birthday photos directly from live backend
 async function fetchProducts() {
   const response = await fetch(PRODUCTS_API, { cache: 'no-store' });
   if (!response.ok) throw new Error(`HTTP ${response.status} fetching photos`);
   const rawProducts = await response.json();
 
-  // Check if local cache has custom or newer photos that a server cold-start lost
-  try {
-    const cachedStr = localStorage.getItem('birthday_products_cache');
-    const localTime = new Date(localStorage.getItem('birthday_products_updated_at') || 0).getTime();
-    if (cachedStr && localTime > 0) {
-      const cached = JSON.parse(cachedStr);
-      if (Array.isArray(cached) && cached.length > 0) {
-        // If local cache has more photos or custom uploaded moments
-        const isCustomLocal = cached.length > rawProducts.length || cached.some(p => p.createdAt && new Date(p.createdAt).getTime() > 1750000000000);
-        if (isCustomLocal) {
-          products = cached;
-          renderGallery();
-          renderHighlightReel();
-          updateStats();
+  if (Array.isArray(rawProducts) && rawProducts.length > 0) {
+    products = mapRawProducts(rawProducts);
+    renderCategoryTabs();
+    renderGallery();
+    renderHighlightReel();
+    updateStats();
 
-          // Re-hydrate server store in background so other devices also see them
-          fetch('/api/sync', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ products: cached })
-          }).catch(() => {});
-          return;
-        }
-      }
-    }
-  } catch (_) {}
-
-  products = mapRawProducts(rawProducts);
-  renderGallery();
-  renderHighlightReel();
-  updateStats();
+    // Cache to localStorage
+    try {
+      localStorage.setItem('birthday_products_cache', JSON.stringify(products));
+      localStorage.setItem('birthday_products_updated_at', new Date().toISOString());
+    } catch (_) {}
+  }
 }
 
 // ================= UI RENDERING =================

@@ -83,6 +83,27 @@ function readJSON(file, fallback = []) {
   return result;
 }
 
+function syncDefaultDataFile() {
+  try {
+    const defaultDataPath = path.resolve(process.cwd(), 'default-data.js');
+    if (fs.existsSync(defaultDataPath)) {
+      const cats = memoryStore.categories || readJSON(CATEGORIES_FILE, defaultCategories);
+      const prods = memoryStore.products || readJSON(PRODUCTS_FILE, defaultProducts);
+      const users = memoryStore.users || readJSON(USERS_FILE, defaultUsers);
+      const sets = memoryStore.settings || readJSON(SETTINGS_FILE, defaultSettings);
+
+      const content = `export const defaultCategories = ${JSON.stringify(cats, null, 2)};\n\n` +
+        `export const defaultProducts = ${JSON.stringify(prods, null, 2)};\n\n` +
+        `export const defaultUsers = ${JSON.stringify(users, null, 2)};\n\n` +
+        `export const defaultSettings = ${JSON.stringify(sets, null, 2)};\n`;
+
+      fs.writeFileSync(defaultDataPath, content, 'utf-8');
+    }
+  } catch (err) {
+    console.warn('Could not sync default-data.js:', err.message);
+  }
+}
+
 function writeJSON(file, data) {
   const isProducts = file.includes('products.json');
   const isCategories = file.includes('categories.json');
@@ -105,6 +126,9 @@ function writeJSON(file, data) {
   try {
     fs.writeFileSync(file, JSON.stringify(data, null, 2), 'utf-8');
   } catch (_) {}
+
+  // 3. Keep default-data.js synchronized for instant bundle updates
+  syncDefaultDataFile();
 
   return true;
 }
