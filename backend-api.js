@@ -83,6 +83,35 @@ async function writeJSON(file, data) {
   return true;
 }
 
+// Album keys: the same rule as albums created in the album manager
+function albumSlug(name) {
+  return name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+}
+
+// A photo's album is optional. Blank means no album (the photo shows only under "All").
+// A typed album reuses the existing album with that name, or is created.
+async function resolveAlbum(rawName) {
+  const name = typeof rawName === 'string' ? rawName.trim() : '';
+  if (!name) return { category: '', categorySlug: '' };
+
+  const categories = await readJSON(CATEGORIES_FILE);
+  const slug = albumSlug(name);
+  const existing =
+    categories.find(c => typeof c.name === 'string' && c.name.trim().toLowerCase() === name.toLowerCase()) ||
+    (slug ? categories.find(c => c.slug === slug) : null);
+  if (existing) return { category: existing.name, categorySlug: existing.slug };
+
+  // A name made only of symbols still needs a key of its own
+  const newSlug = slug || `album-${Date.now().toString(36)}`;
+  categories.push({ id: newSlug, name, slug: newSlug });
+  await writeJSON(CATEGORIES_FILE, categories);
+  return { category: name, categorySlug: newSlug };
+}
+
+function cleanTitle(rawName) {
+  return typeof rawName === 'string' ? rawName.trim() : '';
+}
+
 // Keep default-data.js in step with data/*.json during local development
 function syncDefaultDataFile() {
   try {
@@ -424,28 +453,18 @@ export async function handleApiRequest(req, res) {
   if ((pathname === '/api/products' || pathname === '/api/photos') && method === 'POST') {
     if (!verifyAuthToken(req)) return sendJSON(401, { error: 'Authentication required' });
 
+    // Title and album are both optional
     const body = await parseBody(req);
-    if (!body.name || !body.name.trim()) return sendJSON(400, { error: 'Photo title is required' });
-
     const products = await readJSON(PRODUCTS_FILE);
-    const categories = await readJSON(CATEGORIES_FILE);
-
-    const categoryName = body.category || 'Portraits';
-    const categorySlug = body.categorySlug || categoryName.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-
-    // Auto-create category if new
-    if (!categories.some(c => c.slug === categorySlug)) {
-      categories.push({ id: categorySlug, name: categoryName, slug: categorySlug });
-      await writeJSON(CATEGORIES_FILE, categories);
-    }
+    const album = await resolveAlbum(body.category);
 
     const nextId = products.length > 0 ? Math.max(...products.map(p => p.id)) + 1 : 1;
 
     const newProduct = {
       id: nextId,
-      name: body.name.trim(),
-      category: categoryName,
-      categorySlug: categorySlug,
+      name: cleanTitle(body.name),
+      category: album.category,
+      categorySlug: album.categorySlug,
       date: body.date ? body.date.trim() : new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
       location: body.location ? body.location.trim() : 'Birthday Shoot',
       image: body.image || 'assets/portrait.jpg',
@@ -474,9 +493,15 @@ export async function handleApiRequest(req, res) {
 
     if (index === -1) return sendJSON(404, { error: 'Photo not found' });
 
+    // A changed or cleared album moves the photo: its album key has to follow the name,
+    // or the photo would stay filed under its old album
+    const updates = { ...body };
+    if ('name' in body) updates.name = cleanTitle(body.name);
+    if ('category' in body) Object.assign(updates, await resolveAlbum(body.category));
+
     products[index] = {
       ...products[index],
-      ...body,
+      ...updates,
       id: id,
       featured: body.featured !== undefined ? Boolean(body.featured) : products[index].featured,
       published: body.published !== undefined ? Boolean(body.published) : products[index].published,

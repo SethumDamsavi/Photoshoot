@@ -145,6 +145,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (!products || products.length === 0) {
     products = mapRawProducts(defaultProducts);
   }
+  renderedProductsSnapshot = JSON.stringify(products);
   if (!categories || categories.length === 0) {
     categories = [...defaultCategories];
   }
@@ -155,7 +156,6 @@ document.addEventListener('DOMContentLoaded', () => {
   updateStats();
 
   setupEventListeners();
-  setupReelStripAutoRotation();
   startCountdownTimer();
   initPetals();
   loadBackendData();
@@ -195,8 +195,12 @@ window.addEventListener('storage', (e) => {
 // Load photo collection and albums from Backend
 function mapRawProducts(rawProducts) {
   return rawProducts.map(p => {
-    const categoryName = p.category || (p.categories && p.categories[0] ? p.categories[0].name : 'Portraits');
-    const categorySlug = p.categorySlug || (p.categories && p.categories[0] ? p.categories[0].slug : categoryName.toLowerCase().replace(/[^a-z0-9]+/g, '-'));
+    // Title and album are optional in Studio Admin. A blank album means the photo shows only
+    // under "All", so it must not fall back to an album (or keep an old album key).
+    const legacyAlbum = Array.isArray(p.categories) && p.categories[0] ? p.categories[0] : null;
+    const categoryName = typeof p.category === 'string' ? p.category.trim() : (legacyAlbum ? legacyAlbum.name : '');
+    const categorySlug = !categoryName ? '' :
+      p.categorySlug || (legacyAlbum ? legacyAlbum.slug : categoryName.toLowerCase().replace(/[^a-z0-9]+/g, '-'));
 
     let imageList = [];
     if (Array.isArray(p.images) && p.images.length > 0) {
@@ -209,11 +213,11 @@ function mapRawProducts(rawProducts) {
 
     return {
       id: p.id,
-      name: p.name || 'Untitled Moment',
+      name: typeof p.name === 'string' ? p.name.trim() : '',
       slug: p.slug || (p.name || 'moment').toLowerCase().replace(/[^a-z0-9]+/g, '-'),
       category: categoryName,
       categorySlug: categorySlug,
-      categories: p.categories || [{ name: categoryName, slug: categorySlug }],
+      categories: categoryName ? [{ name: categoryName, slug: categorySlug }] : [],
       date: p.date || 'October 9, 2026',
       location: p.location || 'Rosewood Botanical Gardens',
       image: imageList[0].src,
@@ -307,6 +311,7 @@ async function fetchCategories() {
 
 // Fetch birthday photos directly from live backend (skips re-render when nothing changed)
 let lastProductsText = '';
+let renderedProductsSnapshot = '';
 async function fetchProducts() {
   const response = await fetch(PRODUCTS_API, { cache: 'no-store' });
   if (!response.ok) throw new Error(`HTTP ${response.status} fetching photos`);
@@ -316,7 +321,13 @@ async function fetchProducts() {
   const rawProducts = JSON.parse(text);
 
   if (Array.isArray(rawProducts) && rawProducts.length > 0) {
-    products = mapRawProducts(rawProducts);
+    const mapped = mapRawProducts(rawProducts);
+    // The page already shows these exact photos (from cache or bundled defaults): skip the
+    // full gallery + carousel rebuild and the large localStorage write.
+    const snapshot = JSON.stringify(mapped);
+    if (snapshot === renderedProductsSnapshot) return;
+    renderedProductsSnapshot = snapshot;
+    products = mapped;
     renderCategoryTabs();
     renderGallery();
     renderHighlightReel();
@@ -331,52 +342,164 @@ async function fetchProducts() {
 }
 
 // ================= UI RENDERING =================
+const isInCategory = (p, slug) => p.categorySlug === slug || p.category === slug;
+let renderedTabsSignature = '';
+
+// Album filter rail. Counts come from the photos visitors can actually see, so each badge
+// matches what the grid shows. The live refresh calls this every 20s; when nothing changed
+// the buttons are kept, so keyboard focus and the indicator stay put.
 function renderCategoryTabs() {
   const container = document.getElementById('category-tabs');
   if (!container) return;
 
-  container.innerHTML = `
-    <button class="cat-tab ${currentCategory === 'all' ? 'active' : ''}" data-category="all" role="tab" aria-selected="${currentCategory === 'all'}">
-      All Moments
-    </button>
-  `;
+  const visible = products.filter(p => p.published !== false);
+  const tabs = [{ slug: 'all', name: 'All', count: visible.length }].concat(
+    categories.map(cat => ({
+      slug: cat.slug,
+      name: cat.name,
+      count: visible.filter(p => isInCategory(p, cat.slug)).length
+    }))
+  );
 
-  categories.forEach(cat => {
+  // An album that disappeared from the archive falls back to "All"
+  if (currentCategory !== 'bookmarks' && !tabs.some(tab => tab.slug === currentCategory)) {
+    currentCategory = 'all';
+    renderGallery();
+  }
+
+  const signature = JSON.stringify(tabs);
+  if (signature === renderedTabsSignature && container.querySelector('.cat-tab')) {
+    setActiveCategoryTab({ instant: true });
+    return;
+  }
+  renderedTabsSignature = signature;
+
+  // A rebuild (album added, counts changed) must not drop a keyboard user's place
+  const focusedSlug = container.contains(document.activeElement) ? document.activeElement.dataset.category : null;
+
+  container.innerHTML = '<span class="cat-tab-indicator" aria-hidden="true"></span>';
+  tabs.forEach(tab => {
     const btn = document.createElement('button');
-    btn.className = `cat-tab ${currentCategory === cat.slug ? 'active' : ''}`;
-    btn.dataset.category = cat.slug;
-    btn.setAttribute('role', 'tab');
-    btn.setAttribute('aria-selected', currentCategory === cat.slug);
-    btn.innerHTML = `${cat.name} <span class="cat-count">(${cat.count})</span>`;
+    btn.type = 'button';
+    btn.className = 'cat-tab';
+    btn.dataset.category = tab.slug;
+    btn.innerHTML = `<span class="cat-tab-label">${escapeHtml(tab.name)}</span>` +
+      (tab.count === null ? '' : `<span class="cat-count" aria-hidden="true">${tab.count}</span>`);
+    if (tab.count !== null) {
+      btn.setAttribute('aria-label', `${tab.name}, ${tab.count} ${tab.count === 1 ? 'photo' : 'photos'}`);
+    }
 
     btn.addEventListener('click', () => {
-      document.querySelectorAll('.cat-tab').forEach(b => {
-        b.classList.remove('active');
-        b.setAttribute('aria-selected', 'false');
-      });
-      btn.classList.add('active');
-      btn.setAttribute('aria-selected', 'true');
-      currentCategory = cat.slug;
+      if (currentCategory === tab.slug) return;
+      currentCategory = tab.slug;
+      setActiveCategoryTab();
       renderGallery();
+      animateGalleryIn();
     });
 
     container.appendChild(btn);
   });
 
-  // Click handler for All Moments
-  const allBtn = container.querySelector('.cat-tab[data-category="all"]');
-  if (allBtn) {
-    allBtn.addEventListener('click', () => {
-      document.querySelectorAll('.cat-tab').forEach(b => {
-        b.classList.remove('active');
-        b.setAttribute('aria-selected', 'false');
-      });
-      allBtn.classList.add('active');
-      allBtn.setAttribute('aria-selected', 'true');
-      currentCategory = 'all';
-      renderGallery();
-    });
+  setActiveCategoryTab({ instant: true });
+  if (focusedSlug) {
+    const again = [...container.querySelectorAll('.cat-tab')].find(b => b.dataset.category === focusedSlug);
+    if (again) again.focus({ preventScroll: true });
   }
+}
+
+function setActiveCategoryTab({ instant = false } = {}) {
+  const container = document.getElementById('category-tabs');
+  if (!container) return;
+
+  let activeTab = null;
+  container.querySelectorAll('.cat-tab').forEach(btn => {
+    const isActive = btn.dataset.category === currentCategory;
+    btn.classList.toggle('active', isActive);
+    btn.setAttribute('aria-pressed', String(isActive));
+    if (isActive) activeTab = btn;
+  });
+
+  moveTabIndicator(container, activeTab, instant);
+  if (activeTab) revealActiveTab(activeTab, instant);
+}
+
+// Slide the peony pill under the active tab. Until it is placed, the active tab paints
+// its own fill (see .has-indicator in style.css), so the state never depends on JS.
+function moveTabIndicator(container, activeTab, instant) {
+  const indicator = container.querySelector('.cat-tab-indicator');
+  if (!indicator) return;
+  if (!activeTab || !activeTab.offsetWidth) {
+    container.classList.remove('has-indicator');
+    return;
+  }
+
+  const firstPlacement = !container.classList.contains('has-indicator');
+  if (instant || firstPlacement) container.classList.add('is-instant');
+  indicator.style.width = `${activeTab.offsetWidth}px`;
+  indicator.style.transform = `translateX(${activeTab.offsetLeft}px)`;
+  container.classList.add('has-indicator');
+
+  if (instant || firstPlacement) {
+    void indicator.offsetWidth;
+    requestAnimationFrame(() => container.classList.remove('is-instant'));
+  }
+}
+
+// Keep the chosen album in view when the rail scrolls sideways (phones, many albums)
+function revealActiveTab(tab, instant) {
+  const rail = tab.closest('.categories-scroll-wrapper');
+  if (!rail || rail.scrollWidth <= rail.clientWidth) return;
+
+  const edge = 44;
+  const railBox = rail.getBoundingClientRect();
+  const tabBox = tab.getBoundingClientRect();
+  let delta = 0;
+  if (tabBox.left < railBox.left + edge) delta = tabBox.left - railBox.left - edge;
+  else if (tabBox.right > railBox.right - edge) delta = tabBox.right - railBox.right + edge;
+  if (!delta) return;
+
+  rail.scrollBy({ left: delta, behavior: instant || prefersReducedMotion() ? 'auto' : 'smooth' });
+}
+
+function updateRailFades(rail) {
+  const maxScroll = rail.scrollWidth - rail.clientWidth;
+  rail.classList.toggle('can-scroll-start', rail.scrollLeft > 2);
+  rail.classList.toggle('can-scroll-end', maxScroll - rail.scrollLeft > 2);
+}
+
+function setupCategoryRail() {
+  const rail = document.getElementById('category-rail');
+  const tabs = document.getElementById('category-tabs');
+  if (!rail || !tabs) return;
+
+  rail.addEventListener('scroll', () => updateRailFades(rail), { passive: true });
+
+  // Re-measure when fonts land or the layout changes size
+  const remeasure = () => {
+    updateRailFades(rail);
+    moveTabIndicator(tabs, tabs.querySelector('.cat-tab.active'), true);
+  };
+  if ('ResizeObserver' in window) {
+    const observer = new ResizeObserver(remeasure);
+    observer.observe(rail);
+    observer.observe(tabs);
+  } else {
+    window.addEventListener('resize', remeasure);
+  }
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(remeasure);
+  remeasure();
+}
+
+// Replay the cards' rise after an album or layout switch (not while typing a search)
+let galleryEnterTimer = null;
+function animateGalleryIn() {
+  const grid = document.getElementById('photos-grid');
+  if (!grid || prefersReducedMotion()) return;
+  grid.classList.remove('is-entering');
+  void grid.offsetWidth;
+  grid.classList.add('is-entering');
+  clearTimeout(galleryEnterTimer);
+  galleryEnterTimer = setTimeout(() => grid.classList.remove('is-entering'), 1100);
 }
 
 function renderGallery() {
@@ -406,7 +529,11 @@ function renderGallery() {
   filteredProducts.sort((a, b) => {
     if (currentSort === 'featured') return (b.featured ? 1 : 0) - (a.featured ? 1 : 0);
     if (currentSort === 'oldest') return a.id - b.id;
-    if (currentSort === 'title') return a.name.localeCompare(b.name);
+    if (currentSort === 'title') {
+      // Untitled photos go after the titled ones
+      if (!a.name !== !b.name) return a.name ? -1 : 1;
+      return a.name.localeCompare(b.name);
+    }
     return b.id - a.id; // newest first
   });
 
@@ -425,69 +552,56 @@ function renderGallery() {
   });
 }
 
-const SCRAPBOOK_TAPES = [
-  { text: "chapter 21 ♡", variant: "rose", pinType: "gold", quote: "Stepping into 21 with grace, laughter, and an open heart" },
-  { text: "21 sweet wishes", variant: "blush", pinType: "clip", quote: "Candlelit moments, blush peonies, and twenty-one heartfelt wishes" },
-  { text: "golden hour glow", variant: "slate", pinType: "gold", quote: "Sun-drenched birthday memories wrapped in golden amber warmth" },
-  { text: "twenty-one & free", variant: "cream", pinType: "clip", quote: "Barefoot along the shoreline, chasing dreams and stepping into twenty-one" },
-  { text: "roses & keepsakes", variant: "sage", pinType: "heart", quote: "Artisan French garden roses and cherished 21st celebration keepsakes" },
-  { text: "birthday joy ♡", variant: "rose", pinType: "gold", quote: "Ocean breezes, pure birthday smiles, and golden horizon sunsets" }
+// Image description for photos saved without a title (the title is optional in Studio Admin)
+const UNTITLED_PHOTO_ALT = "Photo from Raveesha's 21st birthday shoot";
+
+// Short lines shown on each card (the same set the scrapbook cards used).
+const CARD_QUOTES = [
+  'Stepping into 21 with grace, laughter, and an open heart',
+  'Candlelit moments, blush peonies, and twenty-one heartfelt wishes',
+  'Sun-drenched birthday memories wrapped in golden amber warmth',
+  'Barefoot along the shoreline, chasing dreams and stepping into twenty-one',
+  'Artisan French garden roses and cherished 21st celebration keepsakes',
+  'Ocean breezes, pure birthday smiles, and golden horizon sunsets'
 ];
 
+// Glass photo card: the photo fills the card and a frosted caption panel floats over its
+// lower edge. The frost is a blurred copy of the same photo (painted once), not a live
+// backdrop-filter, so scrolling past many cards stays smooth.
 function createPhotoCard(product, index) {
   const card = document.createElement('article');
-  card.className = `photo-card polaroid-scrapbook-card polaroid-rot-${(index % 6) + 1}`;
+  // The title is optional; an untitled card shows no caption text (phones then hide its caption panel)
+  card.className = product.name ? 'photo-card' : 'photo-card photo-card--untitled';
   card.id = `photo-${product.id}`;
+  card.style.setProperty('--i', index);
 
   const isBookmarked = bookmarkedIds.has(product.id);
-  const mainImage = product.image || 'assets/portrait.jpg';
-  const tape = SCRAPBOOK_TAPES[index % SCRAPBOOK_TAPES.length];
-  const poeticQuote = tape.quote || product.shortDescription || '';
-
-  // Render pin or clip accent
-  let pinAccentHtml = '';
-  if (tape.pinType === 'gold') {
-    pinAccentHtml = '<div class="scrapbook-pin-accent" title="Pinned memory" aria-hidden="true"></div>';
-  } else if (tape.pinType === 'clip') {
-    pinAccentHtml = '<div class="scrapbook-paperclip-accent" title="Clipped moment" aria-hidden="true"></div>';
-  } else if (tape.pinType === 'heart') {
-    pinAccentHtml = '<div class="scrapbook-heart-seal" title="Cherished seal" aria-hidden="true">♥</div>';
-  }
+  const src = escapeHtml(getShowcaseSrc(product.image || 'assets/portrait.jpg'));
+  const name = escapeHtml(product.name);
+  const alt = escapeHtml(product.name || UNTITLED_PHOTO_ALT);
+  const openLabel = product.name ? `View ${name} photo` : 'View this birthday photo';
+  const quote = CARD_QUOTES[index % CARD_QUOTES.length] || product.shortDescription || '';
+  const favLabel = isBookmarked ? 'Remove from favorites' : 'Add to favorites';
 
   card.innerHTML = `
-    <!-- Scrapbook Washi Tape Header Strip -->
-    <div class="scrapbook-tape tape-${tape.variant}" aria-hidden="true">
-      <span class="tape-script-text">${escapeHtml(tape.text)}</span>
-    </div>
-    ${pinAccentHtml}
-
-    <!-- Polaroid Photo Frame -->
-    <div class="card-media-wrapper polaroid-photo-frame" role="button" tabindex="0" aria-label="View ${escapeHtml(product.name)} photo in lightbox">
-      <img src="${escapeHtml(mainImage)}" alt="${escapeHtml(product.name)}" loading="lazy" onerror="this.src='assets/portrait.jpg'">
-      <div class="card-hover-overlay">
-        <span class="quick-view-badge">
-          ${ICONS.zoom}
-          <span>View Moment</span>
-        </span>
+    <div class="photo-card-frame">
+      <div class="card-media-wrapper" role="button" tabindex="0" aria-label="${openLabel}">
+        <img class="photo-card-img" src="${src}" alt="${alt}" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='assets/portrait.jpg'">
       </div>
-    </div>
-
-    <!-- Polaroid Bottom Paper Section -->
-    <div class="polaroid-paper-bottom">
-      <div class="polaroid-caption-header">
-        <h3 class="polaroid-title">${escapeHtml(product.name)}</h3>
-        <button class="card-fav-btn polaroid-fav-btn ${isBookmarked ? 'is-favorite' : ''}" title="${isBookmarked ? 'Remove from favorites' : 'Add to favorites'}" aria-label="Favorite toggle">
-          ${isBookmarked ? ICONS.heartFilled : ICONS.heartOutline}
-        </button>
-      </div>
-
-      <!-- Poetic Typewriter Reflection (from User Reference 2) -->
-      ${poeticQuote ? `<p class="polaroid-typewriter-quote">“${escapeHtml(poeticQuote)}”</p>` : ''}
-
-      <div class="polaroid-meta-line">
-        <span class="polaroid-meta-chip">${ICONS.calendar} ${escapeHtml(product.date)}</span>
-        <span class="meta-dot-sep">•</span>
-        <span class="polaroid-meta-chip">${ICONS.pin} ${escapeHtml(product.location)}</span>
+      ${product.category ? `<span class="photo-card-album">${escapeHtml(product.category)}</span>` : ''}
+      <button type="button" class="card-fav-btn ${isBookmarked ? 'is-favorite' : ''}" aria-pressed="${isBookmarked}" aria-label="${favLabel}" title="${favLabel}">
+        ${isBookmarked ? ICONS.heartFilled : ICONS.heartOutline}
+      </button>
+      <div class="photo-card-glass">
+        <img class="photo-card-frost" src="${src}" alt="" aria-hidden="true" loading="lazy" decoding="async" onerror="this.remove()">
+        <div class="photo-card-copy">
+          ${product.name ? `<h3 class="photo-card-title">${name}</h3>` : ''}
+          ${quote ? `<p class="photo-card-quote">${escapeHtml(quote)}</p>` : ''}
+          <p class="photo-card-meta">
+            <span class="photo-card-meta-item">${ICONS.calendar}<span>${escapeHtml(product.date)}</span></span>
+            <span class="photo-card-meta-item photo-card-place">${ICONS.pin}<span>${escapeHtml(product.location)}</span></span>
+          </p>
+        </div>
       </div>
     </div>
   `;
@@ -546,6 +660,7 @@ function setupLightboxEvents() {
   if (!lbModal) return;
 
   const closeLb = () => {
+    document.documentElement.classList.remove('lb-open');
     lbModal.classList.remove('open');
     lbModal.classList.remove('cinema-mode');
     lbModal.setAttribute('aria-hidden', 'true');
@@ -578,8 +693,10 @@ function setupLightboxEvents() {
     if (navigator.share) {
       try {
         await navigator.share({
-          title: p.name,
-          text: `Check out "${p.name}" from Raveesha's 21st Birthday Archive!`,
+          title: p.name || "Raveesha's 21st Birthday Shoot",
+          text: p.name
+            ? `Check out "${p.name}" from Raveesha's 21st Birthday Archive!`
+            : "Check out this photo from Raveesha's 21st Birthday Archive!",
           url: shareUrl
         });
         return;
@@ -688,6 +805,9 @@ function openLightbox(index) {
   currentLightboxIndex = index;
   const lbModal = document.getElementById('lightbox-modal');
   if (lbModal) {
+    // Lock the page behind the viewer and start each visit at the top of the viewer
+    document.documentElement.classList.add('lb-open');
+    lbModal.scrollTop = 0;
     lbModal.classList.add('open');
     lbModal.setAttribute('aria-hidden', 'false');
     updateLightboxContent();
@@ -739,7 +859,7 @@ function updateLightboxContent() {
     lbImage.style.transform = 'scale(0.97)';
     setTimeout(() => {
       lbImage.src = mainImage;
-      lbImage.alt = product.name;
+      lbImage.alt = product.name || UNTITLED_PHOTO_ALT;
       lbImage.style.opacity = '1';
       lbImage.style.transform = 'scale(1)';
     }, 90);
@@ -832,22 +952,38 @@ function setupEventListeners() {
     });
   }
 
+  // Album rail: edge fades and indicator re-measuring
+  setupCategoryRail();
+
   // Search input
   const searchInput = document.getElementById('search-input');
   const clearSearchBtn = document.getElementById('clear-search-btn');
+  const applySearch = (value) => {
+    searchQuery = value.toLowerCase().trim();
+    if (clearSearchBtn) clearSearchBtn.hidden = !searchQuery;
+    renderGallery();
+  };
   if (searchInput) {
-    searchInput.addEventListener('input', (e) => {
-      searchQuery = e.target.value.toLowerCase().trim();
-      if (clearSearchBtn) clearSearchBtn.style.display = searchQuery ? 'inline-block' : 'none';
-      renderGallery();
+    searchInput.addEventListener('input', (e) => applySearch(e.target.value));
+    // Esc clears the field first; a second Esc leaves it
+    searchInput.addEventListener('keydown', (e) => {
+      if (e.key !== 'Escape') return;
+      if (searchInput.value) {
+        e.preventDefault();
+        searchInput.value = '';
+        applySearch('');
+      } else {
+        searchInput.blur();
+      }
     });
   }
   if (clearSearchBtn) {
     clearSearchBtn.addEventListener('click', () => {
-      if (searchInput) searchInput.value = '';
-      searchQuery = '';
-      clearSearchBtn.style.display = 'none';
-      renderGallery();
+      if (searchInput) {
+        searchInput.value = '';
+        searchInput.focus();
+      }
+      applySearch('');
     });
   }
 
@@ -860,25 +996,26 @@ function setupEventListeners() {
     });
   }
 
-  // View switch (Masonry vs Grid)
+  // View switch (Grid vs Masonry)
   const viewMasonryBtn = document.getElementById('view-masonry-btn');
   const viewGridBtn = document.getElementById('view-grid-btn');
   const photosGrid = document.getElementById('photos-grid');
 
   if (viewMasonryBtn && viewGridBtn && photosGrid) {
-    viewMasonryBtn.addEventListener('click', () => {
-      viewMasonryBtn.classList.add('active');
-      viewGridBtn.classList.remove('active');
-      currentLayout = 'masonry';
-      photosGrid.className = 'photos-grid masonry-mode';
-    });
+    const setLayout = (layout) => {
+      if (currentLayout === layout) return;
+      currentLayout = layout;
+      const isMasonry = layout === 'masonry';
+      viewMasonryBtn.classList.toggle('active', isMasonry);
+      viewMasonryBtn.setAttribute('aria-pressed', String(isMasonry));
+      viewGridBtn.classList.toggle('active', !isMasonry);
+      viewGridBtn.setAttribute('aria-pressed', String(!isMasonry));
+      photosGrid.className = isMasonry ? 'photos-grid masonry-mode' : 'photos-grid uniform-grid-mode';
+      animateGalleryIn();
+    };
 
-    viewGridBtn.addEventListener('click', () => {
-      viewGridBtn.classList.add('active');
-      viewMasonryBtn.classList.remove('active');
-      currentLayout = 'grid';
-      photosGrid.className = 'photos-grid uniform-grid-mode';
-    });
+    viewMasonryBtn.addEventListener('click', () => setLayout('masonry'));
+    viewGridBtn.addEventListener('click', () => setLayout('grid'));
   }
 
 
@@ -888,11 +1025,7 @@ function setupEventListeners() {
 
   function openHeartedMemories() {
     currentCategory = 'bookmarks';
-    document.querySelectorAll('.cat-tab').forEach(b => {
-      const isMatch = b.dataset.category === 'bookmarks';
-      b.classList.toggle('active', isMatch);
-      b.setAttribute('aria-selected', isMatch ? 'true' : 'false');
-    });
+    setActiveCategoryTab();
     renderGallery();
     const gallerySection = document.getElementById('gallery-controls');
     if (gallerySection) {
@@ -902,15 +1035,19 @@ function setupEventListeners() {
 
   if (navBookmarksBtn) navBookmarksBtn.addEventListener('click', openHeartedMemories);
   if (heroHeartedBtn) heroHeartedBtn.addEventListener('click', openHeartedMemories);
-
-  setupReelStripAutoRotation();
   setupLightboxEvents();
 }
 
-// ================= HIGHLIGHT REEL DYNAMIC BACKEND & ROTATABLE SCROLL =================
-let reelAnimFrame = null;
-let isReelPaused = false;
-let touchResumeTimer = null;
+// ================= HIGHLIGHT SHOWCASE: SCAN CAROUSEL =================
+// A rose light line "develops" each gliding photo from monochrome to full colour.
+const reducedMotionQuery = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : null;
+const finePointerQuery = window.matchMedia ? window.matchMedia('(hover: hover) and (pointer: fine)') : null;
+const prefersReducedMotion = () => Boolean(reducedMotionQuery && reducedMotionQuery.matches);
+const hasFinePointer = () => Boolean(finePointerQuery && finePointerQuery.matches);
+const wrapMod = (v, m) => ((v % m) + m) % m;
+
+let scanCarouselController = null;
+const showcaseSrcCache = new Map();
 
 function openLightboxForPhotoId(photoId) {
   let idx = filteredProducts.findIndex(p => p.id === photoId);
@@ -927,294 +1064,477 @@ function openLightboxForPhotoId(photoId) {
   }
 }
 
-function renderHighlightReel() {
-  const reel = document.getElementById('story-photo-reel-strip') || document.querySelector('.story-photo-reel-strip');
-  if (!reel) return;
-
-  const validPhotos = products.filter(p => p.published !== false);
-  if (validPhotos.length === 0) return;
-
-  // Repeat sequence so there are always at least 15 items for smooth infinite rotation
-  const repeatCount = Math.max(3, Math.ceil(15 / validPhotos.length));
-  reel.innerHTML = '';
-
-  for (let r = 0; r < repeatCount; r++) {
-    validPhotos.forEach((photo, pIdx) => {
-      const globalIndex = products.findIndex(p => p.id === photo.id);
-      const item = document.createElement('div');
-      item.className = 'reel-item';
-      item.setAttribute('role', 'button');
-      item.setAttribute('tabindex', '0');
-      item.setAttribute('aria-label', `View ${photo.name || '21st Birthday Milestone'}`);
-      item.dataset.photoId = String(photo.id);
-      item.dataset.photoIndex = String(globalIndex >= 0 ? globalIndex : pIdx);
-
-      const img = document.createElement('img');
-      img.src = photo.image || (photo.images && photo.images[0]?.src) || '/assets/portrait.jpg';
-      img.alt = photo.name || '21st Birthday Milestone photo';
-      img.className = 'reel-photo';
-      img.loading = 'lazy';
-      item.appendChild(img);
-
-      reel.appendChild(item);
-    });
+// Base64 photos become one shared blob URL each, so the repeated carousel cards
+// don't each carry their own copy of a large data string.
+function getShowcaseSrc(src) {
+  if (!src || !src.startsWith('data:')) return src;
+  const cached = showcaseSrcCache.get(src);
+  if (cached) return cached;
+  let url = src;
+  try {
+    const comma = src.indexOf(',');
+    const meta = src.slice(5, comma);
+    if (comma > 0 && meta.includes(';base64')) {
+      const binary = atob(src.slice(comma + 1));
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      url = URL.createObjectURL(new Blob([bytes], { type: meta.split(';')[0] || 'image/jpeg' }));
+    }
+  } catch (_) {
+    url = src;
   }
-
-  setupReelStripAutoRotation(reel);
+  showcaseSrcCache.set(src, url);
+  return url;
 }
 
-function setupReelStripAutoRotation(targetReel) {
-  const reel = targetReel || document.getElementById('story-photo-reel-strip') || document.querySelector('.story-photo-reel-strip');
-  if (!reel) return;
+function getShowcasePhotos() {
+  return products
+    .filter(p => p && p.published !== false)
+    .map(photo => ({
+      id: photo.id,
+      name: photo.name || '21st birthday moment',
+      rawSrc: photo.image || (photo.images && photo.images[0]?.src) || '/assets/portrait.jpg'
+    }));
+}
 
-  if (reelAnimFrame) {
-    cancelAnimationFrame(reelAnimFrame);
-    reelAnimFrame = null;
+// Repeats exist only to fill the layout; they stay out of the tab order and screen reader output.
+function createShowcaseCard(photo, className, isRepeat) {
+  const card = document.createElement('button');
+  card.type = 'button';
+  card.className = className;
+  if (isRepeat) {
+    card.tabIndex = -1;
+    card.setAttribute('aria-hidden', 'true');
+  } else {
+    card.setAttribute('aria-label', `Open photo: ${photo.name}`);
   }
-  if (touchResumeTimer) {
-    clearTimeout(touchResumeTimer);
-    touchResumeTimer = null;
-  }
+  return card;
+}
 
-  // Optimized rotation speed with subpixel accumulator for mobile browsers
-  const isMobile = window.innerWidth <= 768;
-  const speed = isMobile ? 0.95 : 0.75; // Clean, visible auto-rotation on mobile & desktop
-  let accumulatedScroll = reel.scrollLeft || 0;
-  let isDown = false;
-  let isTouchActive = false;
-  let hasMoved = false;
-  let suppressClick = false;
-  let startX = 0;
-  let startY = 0;
-  let scrollStart = 0;
-  let isHorizontalDrag = null; // null = undetermined, true = horizontal, false = vertical
+function createShowcaseImage(src, className) {
+  const img = document.createElement('img');
+  img.src = src;
+  img.alt = '';
+  img.className = className;
+  img.decoding = 'async';
+  img.draggable = false;
+  return img;
+}
 
-  function pauseRotation() {
-    isReelPaused = true;
-    if (touchResumeTimer) clearTimeout(touchResumeTimer);
-  }
+function renderHighlightReel() {
+  if (scanCarouselController) scanCarouselController.destroy();
+  if (storySliderController) storySliderController.destroy();
 
-  function resumeRotation(delay = 1200) {
-    if (touchResumeTimer) clearTimeout(touchResumeTimer);
-    touchResumeTimer = setTimeout(() => {
-      isReelPaused = false;
-      accumulatedScroll = reel.scrollLeft;
-    }, delay);
-  }
-
-  // Hover pauses ONLY on desktop mouse devices (never on mobile touch screens)
-  reel.onmouseenter = () => {
-    if (window.matchMedia && window.matchMedia('(hover: hover) and (pointer: fine)').matches) {
-      pauseRotation();
-    }
-  };
-  reel.onmouseleave = () => {
-    if (!isDown && !isTouchActive) {
-      isReelPaused = false;
-      accumulatedScroll = reel.scrollLeft;
-    }
-  };
-
-  // Infinite wrap-around calculation
-  function wrapLoop() {
-    const totalW = reel.scrollWidth;
-    const viewW = reel.clientWidth;
-    if (totalW <= viewW || totalW <= 0) return;
-    const oneThird = totalW / 3;
-
-    if (reel.scrollLeft >= oneThird * 2) {
-      reel.scrollLeft -= oneThird;
-      accumulatedScroll = reel.scrollLeft;
-    } else if (reel.scrollLeft <= 10) {
-      reel.scrollLeft += oneThird;
-      accumulatedScroll = reel.scrollLeft;
-    }
-  }
-
-  // Ensure initial scroll position starts in the middle set (Set B)
-  requestAnimationFrame(() => {
-    if (reel.scrollWidth > reel.clientWidth && reel.scrollLeft < 10) {
-      reel.scrollLeft = Math.round(reel.scrollWidth / 3);
-      accumulatedScroll = reel.scrollLeft;
+  const photos = getShowcasePhotos();
+  const liveSources = new Set(photos.map(p => p.rawSrc));
+  showcaseSrcCache.forEach((url, key) => {
+    if (!liveSources.has(key)) {
+      if (url.startsWith('blob:')) URL.revokeObjectURL(url);
+      showcaseSrcCache.delete(key);
     }
   });
+  photos.forEach(p => { p.src = getShowcaseSrc(p.rawSrc); });
 
-  // Attach wrapLoop on native scroll event
-  reel.onscroll = () => {
-    if (isDown || isTouchActive) {
-      accumulatedScroll = reel.scrollLeft;
+  renderHeroMoments(photos);
+  scanCarouselController = createScanCarousel(photos);
+  storySliderController = createStorySlider();
+}
+
+// Hero frame's gallery rail: three thumbnails (featured photos first) plus the photo and album
+// counts. Reuses the showcase list above, so embedded images come through as cached blob URLs.
+function renderHeroMoments(photos) {
+  const stack = document.getElementById('hero-moments-stack');
+  const countEl = document.getElementById('hero-moments-count');
+  const labelEl = document.getElementById('hero-moments-label');
+  if (!stack || !countEl || !labelEl) return;
+
+  const featuredIds = new Set(products.filter(p => p && p.featured).map(p => p.id));
+  const picks = [...photos]
+    .sort((a, b) => featuredIds.has(b.id) - featuredIds.has(a.id))
+    .slice(0, 3);
+  stack.replaceChildren(...picks.map(photo => createShowcaseImage(photo.src, 'hero-moments-thumb')));
+
+  const albumCount = new Set(
+    products
+      .filter(p => p && p.published !== false)
+      .map(p => p.categorySlug || p.category)
+      .filter(Boolean)
+  ).size;
+  const noun = photos.length === 1 ? 'moment' : 'moments';
+  countEl.textContent = String(photos.length);
+  labelEl.textContent = albumCount > 1 ? `${noun} · ${albumCount} albums` : `${noun} in the gallery`;
+}
+
+// ---------- Her Story: hover image slider ----------
+// Chapter rows on the left; hovering (mouse), focusing (keyboard) or tapping (touch) a row
+// slides the photo frame to that chapter. Row 01 + its panel (the admin-set story portrait)
+// live in index.html so settings can update them any time; album rows are added here.
+let storySliderController = null;
+let storySliderActive = 0;
+
+function getStoryAlbums() {
+  const albums = new Map();
+  products.forEach(p => {
+    if (!p || p.published === false) return;
+    const slug = p.categorySlug || p.category;
+    if (!slug) return;
+    let album = albums.get(slug);
+    if (!album) {
+      album = { slug, name: p.category || slug, count: 0, cover: null };
+      albums.set(slug, album);
     }
-    wrapLoop();
+    album.count += 1;
+    if (!album.cover || (p.featured && !album.cover.featured)) album.cover = p;
+  });
+  return [...albums.values()].slice(0, 4);
+}
+
+function showAlbumInGallery(slug) {
+  currentCategory = slug;
+  renderCategoryTabs();
+  renderGallery();
+  const target = document.getElementById('gallery-controls');
+  if (target) target.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'start' });
+}
+
+function createStorySlider() {
+  const list = document.getElementById('story-slider-list');
+  const media = document.getElementById('story-slider-media');
+  const track = document.getElementById('story-slider-track');
+  if (!list || !media || !track) return null;
+
+  list.querySelectorAll('[data-album]').forEach(el => el.remove());
+  track.querySelectorAll('[data-album]').forEach(el => el.remove());
+
+  getStoryAlbums().forEach((album, i) => {
+    const index = i + 1;
+    const item = document.createElement('button');
+    item.type = 'button';
+    item.className = 'story-slider-item';
+    item.id = `story-tab-${index}`;
+    item.setAttribute('role', 'tab');
+    item.setAttribute('aria-controls', 'story-slider-media');
+    item.dataset.index = String(index);
+    item.dataset.album = album.slug;
+    item.innerHTML = `<span class="story-slider-num">(${String(index + 1).padStart(2, '0')})</span><span class="story-slider-name">${escapeHtml(album.name)}</span>`;
+    list.appendChild(item);
+
+    const panel = document.createElement('button');
+    panel.type = 'button';
+    panel.className = 'story-slider-panel';
+    panel.dataset.index = String(index);
+    panel.dataset.album = album.slug;
+    panel.setAttribute('aria-label', `View the ${album.name} album`);
+    const caption = document.createElement('span');
+    caption.className = 'story-slider-caption';
+    caption.innerHTML = `${album.count} ${album.count === 1 ? 'photo' : 'photos'} &middot; View album <span aria-hidden="true">&rarr;</span>`;
+    panel.append(createShowcaseImage(getShowcaseSrc(album.cover.image), 'story-slider-img'), caption);
+    track.appendChild(panel);
+  });
+
+  const items = [...list.querySelectorAll('.story-slider-item')];
+  const panels = [...track.querySelectorAll('.story-slider-panel')];
+  panels.forEach((panel, i) => { panel.style.top = `${i * 100}%`; });
+  let active = -1;
+
+  function setActive(index) {
+    const next = Math.max(0, Math.min(items.length - 1, index));
+    if (next === active) return;
+    active = next;
+    storySliderActive = next;
+    track.style.transform = `translate3d(0, ${-next * 100}%, 0)`;
+    items.forEach((item, i) => {
+      const on = i === next;
+      item.classList.toggle('is-active', on);
+      item.setAttribute('aria-selected', String(on));
+      item.tabIndex = on ? 0 : -1;
+    });
+    panels.forEach((panel, i) => {
+      const on = i === next;
+      panel.classList.toggle('is-active', on);
+      panel.inert = !on;
+    });
+    media.setAttribute('aria-labelledby', items[next].id);
+  }
+
+  const itemFrom = (e) => {
+    const item = e.target.closest('.story-slider-item');
+    return item && list.contains(item) ? item : null;
   };
-
-  // --- DESKTOP MOUSE DRAG ---
-  reel.onmousedown = (e) => {
-    if (e.button !== 0) return;
-    isDown = true;
-    hasMoved = false;
-    suppressClick = false;
-    pauseRotation();
-    reel.classList.add('is-dragging');
-    startX = e.pageX;
-    scrollStart = reel.scrollLeft;
-    accumulatedScroll = reel.scrollLeft;
+  const onPointerOver = (e) => {
+    if (e.pointerType !== 'mouse') return;
+    const item = itemFrom(e);
+    if (item) setActive(Number(item.dataset.index));
   };
-
-  const onMouseMove = (e) => {
-    if (!isDown) return;
-    const dx = e.pageX - startX;
-    if (Math.abs(dx) > 5) {
-      hasMoved = true;
-      suppressClick = true;
-    }
-    reel.scrollLeft = scrollStart - dx * 1.3;
-    accumulatedScroll = reel.scrollLeft;
-    wrapLoop();
+  const onActivate = (e) => {
+    const item = itemFrom(e);
+    if (item) setActive(Number(item.dataset.index));
   };
-
-  const onMouseUp = () => {
-    if (!isDown) return;
-    isDown = false;
-    reel.classList.remove('is-dragging');
-    accumulatedScroll = reel.scrollLeft;
-    setTimeout(() => {
-      suppressClick = false;
-      hasMoved = false;
-    }, 150);
-    resumeRotation(1200);
+  const onKeyDown = (e) => {
+    const step = { ArrowDown: 1, ArrowRight: 1, ArrowUp: -1, ArrowLeft: -1 }[e.key];
+    let next = null;
+    if (step) next = (active + step + items.length) % items.length;
+    else if (e.key === 'Home') next = 0;
+    else if (e.key === 'End') next = items.length - 1;
+    if (next === null) return;
+    e.preventDefault();
+    items[next].focus();
   };
-
-  window.removeEventListener('mousemove', onMouseMove);
-  window.addEventListener('mousemove', onMouseMove);
-  window.removeEventListener('mouseup', onMouseUp);
-  window.addEventListener('mouseup', onMouseUp);
-
-  // --- MOBILE TOUCH SWIPE & SCROLL ---
-  reel.ontouchstart = (e) => {
-    if (e.touches.length !== 1) return;
-    isTouchActive = true;
-    hasMoved = false;
-    suppressClick = false;
-    isHorizontalDrag = null;
-    startX = e.touches[0].clientX;
-    startY = e.touches[0].clientY;
-    scrollStart = reel.scrollLeft;
-    accumulatedScroll = reel.scrollLeft;
-    pauseRotation();
-  };
-
-  reel.ontouchmove = (e) => {
-    if (!isTouchActive || e.touches.length !== 1) return;
-    const currentX = e.touches[0].clientX;
-    const currentY = e.touches[0].clientY;
-    const dx = currentX - startX;
-    const dy = currentY - startY;
-
-    // Detect direction on first movement beyond 6px
-    if (isHorizontalDrag === null) {
-      if (Math.abs(dx) > 6 || Math.abs(dy) > 6) {
-        isHorizontalDrag = Math.abs(dx) >= Math.abs(dy);
-      }
-    }
-
-    // If vertical gesture, do NOT touch reel.scrollLeft and let normal page scrolling happen naturally!
-    if (isHorizontalDrag === false) {
+  const onPanelClick = (e) => {
+    const panel = e.target.closest('.story-slider-panel');
+    if (!panel) return;
+    if (panel.dataset.album) {
+      showAlbumInGallery(panel.dataset.album);
       return;
     }
+    // Story portrait: open it in the lightbox when it is one of the archive photos.
+    const storyImg = document.getElementById('story-polaroid-img');
+    const src = storyImg ? storyImg.getAttribute('src') : '';
+    const match = products.find(p => p.published !== false && p.image === src);
+    if (match) openLightboxForPhotoId(match.id); else openLightbox(0);
+  };
 
-    // If horizontal gesture, scroll the reel smoothly
-    if (isHorizontalDrag === true) {
-      hasMoved = true;
-      suppressClick = true;
-      reel.scrollLeft = scrollStart - dx * 1.3;
-      accumulatedScroll = reel.scrollLeft;
-      wrapLoop();
+  setActive(Math.min(storySliderActive, items.length - 1));
+  list.addEventListener('pointerover', onPointerOver);
+  list.addEventListener('focusin', onActivate);
+  list.addEventListener('click', onActivate);
+  list.addEventListener('keydown', onKeyDown);
+  track.addEventListener('click', onPanelClick);
+
+  return {
+    destroy() {
+      list.removeEventListener('pointerover', onPointerOver);
+      list.removeEventListener('focusin', onActivate);
+      list.removeEventListener('click', onActivate);
+      list.removeEventListener('keydown', onKeyDown);
+      track.removeEventListener('click', onPanelClick);
     }
   };
+}
 
-  const endTouch = () => {
-    if (!isTouchActive) return;
-    isTouchActive = false;
-    isHorizontalDrag = null;
-    accumulatedScroll = reel.scrollLeft;
-    setTimeout(() => {
-      suppressClick = false;
-      hasMoved = false;
-    }, 250);
-    resumeRotation(1200);
-  };
+// ---------- Scan carousel ----------
+function createScanCarousel(photos) {
+  const section = document.getElementById('scan-carousel');
+  const viewport = document.getElementById('scan-carousel-viewport');
+  const track = document.getElementById('scan-carousel-track');
+  const toggleBtn = document.getElementById('scan-toggle-btn');
+  if (!section || !viewport || !track) return null;
 
-  reel.ontouchend = endTouch;
-  reel.ontouchcancel = endTouch;
+  track.innerHTML = '';
+  section.hidden = photos.length === 0;
+  if (photos.length === 0) return null;
 
-  // --- LIGHTBOX CLICKS ---
-  reel.querySelectorAll('.reel-item').forEach(item => {
-    item.onclick = (e) => {
-      if (suppressClick || hasMoved) {
-        e.preventDefault();
-        e.stopImmediatePropagation();
-        return;
-      }
-      const photoId = parseInt(item.dataset.photoId, 10);
-      const photoIndex = parseInt(item.dataset.photoIndex, 10);
-      if (!isNaN(photoId)) {
-        openLightboxForPhotoId(photoId);
-      } else if (!isNaN(photoIndex) && photoIndex >= 0) {
-        openLightbox(photoIndex);
-      }
-    };
+  const AUTO_SPEED = 0.045; // px per ms, gliding left to right through the scan line
+  let cards = [];
+  let cardW = 0;
+  let step = 0;
+  let loopLen = 1;
+  let viewW = 0;
+  let offset = 0;
+  let momentum = 0;
+  let focusTarget = null;
+  let frame = 0;
+  let lastTime = 0;
+  let visible = false;
+  let userPaused = prefersReducedMotion();
+  let hovering = false;
+  let focused = false;
+  let drag = null;
+  let suppressClick = false;
+  let resizeTimer = 0;
 
-    item.onkeydown = (e) => {
-      if (e.key === 'Enter' || e.key === ' ') {
-        e.preventDefault();
-        const photoId = parseInt(item.dataset.photoId, 10);
-        const photoIndex = parseInt(item.dataset.photoIndex, 10);
-        if (!isNaN(photoId)) {
-          openLightboxForPhotoId(photoId);
-        } else if (!isNaN(photoIndex) && photoIndex >= 0) {
-          openLightbox(photoIndex);
+  function build() {
+    track.innerHTML = '';
+    cards = [];
+    const probe = document.createElement('div');
+    probe.className = 'scan-card';
+    probe.style.visibility = 'hidden';
+    track.appendChild(probe);
+    cardW = probe.offsetWidth || 200;
+    track.removeChild(probe);
+
+    viewW = viewport.clientWidth;
+    step = cardW + Math.round(cardW * 0.2);
+    const needed = Math.ceil((viewW + step * 2) / step);
+    const total = photos.length * Math.max(1, Math.ceil(needed / photos.length));
+    loopLen = total * step;
+
+    for (let i = 0; i < total; i++) {
+      const photo = photos[i % photos.length];
+      const card = createShowcaseCard(photo, 'scan-card', i >= photos.length);
+      const frameEl = document.createElement('span');
+      frameEl.className = 'scan-card-frame';
+      // Colour half is revealed by sliding a clipping window (transform only, no repaint per frame).
+      const reveal = document.createElement('span');
+      reveal.className = 'scan-card-reveal';
+      const color = createShowcaseImage(photo.src, 'scan-card-img scan-card-color');
+      reveal.appendChild(color);
+      frameEl.append(createShowcaseImage(photo.src, 'scan-card-img scan-card-mono'), reveal);
+      card.appendChild(frameEl);
+      card.addEventListener('click', (e) => {
+        if (suppressClick) {
+          e.preventDefault();
+          return;
         }
-      }
-    };
-  });
-
-  // --- ARROW BUTTONS ---
-  const prevBtn = document.getElementById('reel-nav-prev');
-  const nextBtn = document.getElementById('reel-nav-next');
-  if (prevBtn) {
-    prevBtn.onclick = (e) => {
-      e.preventDefault();
-      pauseRotation();
-      const scrollStep = reel.clientWidth > 480 ? 320 : 220;
-      reel.scrollBy({ left: -scrollStep, behavior: 'smooth' });
-      accumulatedScroll = reel.scrollLeft - scrollStep;
-      resumeRotation(2000);
-    };
-  }
-  if (nextBtn) {
-    nextBtn.onclick = (e) => {
-      e.preventDefault();
-      pauseRotation();
-      const scrollStep = reel.clientWidth > 480 ? 320 : 220;
-      reel.scrollBy({ left: scrollStep, behavior: 'smooth' });
-      accumulatedScroll = reel.scrollLeft + scrollStep;
-      resumeRotation(2000);
-    };
-  }
-
-  // --- 60FPS CONTINUOUS ROTATION (FLUID MOBILE & DESKTOP) ---
-  function step() {
-    if (!isReelPaused && !isDown && !isTouchActive) {
-      accumulatedScroll += speed;
-      reel.scrollLeft = Math.round(accumulatedScroll);
-      wrapLoop();
-    } else {
-      accumulatedScroll = reel.scrollLeft;
+        openLightboxForPhotoId(photo.id);
+      });
+      card.addEventListener('focus', () => {
+        // Glide the focused card just past the scan line so keyboard users see it in colour.
+        const desired = viewW * 0.5 + cardW * 0.15;
+        const raw = desired + step - i * step;
+        const delta = wrapMod(raw - offset + loopLen / 2, loopLen) - loopLen / 2;
+        focusTarget = offset + delta;
+        momentum = 0;
+      });
+      track.appendChild(card);
+      cards.push({ el: card, reveal, color, index: i, cut: '' });
     }
-    reelAnimFrame = requestAnimationFrame(step);
   }
 
-  reelAnimFrame = requestAnimationFrame(step);
+  function render(dt) {
+    if (!drag) {
+      if (focusTarget !== null) {
+        offset += (focusTarget - offset) * Math.min(1, dt * 0.012);
+        if (Math.abs(focusTarget - offset) < 0.5) {
+          offset = focusTarget;
+          focusTarget = null;
+        }
+      } else if (Math.abs(momentum) > 0.003) {
+        offset += momentum * dt;
+        momentum *= Math.pow(0.94, dt / 16.7);
+      } else {
+        momentum = 0;
+        if (!userPaused && !hovering && !focused && !prefersReducedMotion()) offset += AUTO_SPEED * dt;
+      }
+    }
+
+    const half = viewW / 2;
+    for (const c of cards) {
+      const x = wrapMod(c.index * step + offset, loopLen) - step;
+      const center = x + cardW / 2;
+      const d = (center - half) / half;
+      const scale = 0.82 + 0.3 * Math.min(d * d, 1.4); // smaller at the scan line, larger at the edges
+      const left = center - (cardW * scale) / 2;
+      const cut = Math.min(Math.max((half - left) / scale, 0), cardW).toFixed(1);
+      c.el.style.transform = `translate3d(${x.toFixed(2)}px, -50%, 0) scale(${scale.toFixed(4)})`;
+      if (cut !== c.cut) {
+        c.reveal.style.transform = `translate3d(${cut}px, 0, 0)`;
+        c.color.style.transform = `translate3d(-${cut}px, 0, 0)`;
+        c.cut = cut;
+      }
+    }
+  }
+
+  function loop(now) {
+    const dt = lastTime ? Math.min(now - lastTime, 64) : 16;
+    lastTime = now;
+    render(dt);
+    frame = visible ? requestAnimationFrame(loop) : 0;
+  }
+
+  const io = new IntersectionObserver((entries) => {
+    visible = entries.some(e => e.isIntersecting);
+    if (visible && !frame) {
+      lastTime = 0;
+      frame = requestAnimationFrame(loop);
+    }
+  }, { rootMargin: '120px 0px' });
+
+  // --- Drag / swipe with momentum (vertical page scrolling stays native via touch-action: pan-y) ---
+  const onPointerDown = (e) => {
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    drag = { id: e.pointerId, startX: e.clientX, startOffset: offset, lastX: e.clientX, lastT: performance.now(), velocity: 0, moved: false };
+    momentum = 0;
+    focusTarget = null;
+  };
+  const onPointerMove = (e) => {
+    if (!drag || e.pointerId !== drag.id) return;
+    const dx = e.clientX - drag.startX;
+    if (!drag.moved) {
+      if (Math.abs(dx) < 6) return;
+      drag.moved = true;
+      viewport.classList.add('is-dragging');
+    }
+    const now = performance.now();
+    drag.velocity = (e.clientX - drag.lastX) / Math.max(now - drag.lastT, 1);
+    drag.lastX = e.clientX;
+    drag.lastT = now;
+    offset = drag.startOffset + dx;
+  };
+  const endDrag = (e) => {
+    if (!drag || e.pointerId !== drag.id) return;
+    if (drag.moved) {
+      const fresh = performance.now() - drag.lastT < 90;
+      momentum = e.type === 'pointerup' && fresh ? Math.max(-2.5, Math.min(2.5, drag.velocity)) : 0;
+      suppressClick = true;
+      setTimeout(() => { suppressClick = false; }, 80);
+    }
+    viewport.classList.remove('is-dragging');
+    drag = null;
+  };
+  const onPointerEnter = (e) => { if (e.pointerType === 'mouse' && hasFinePointer()) hovering = true; };
+  const onPointerLeave = (e) => { if (e.pointerType === 'mouse') hovering = false; };
+  const onFocusIn = () => { focused = true; };
+  const onFocusOut = (e) => { focused = viewport.contains(e.relatedTarget); };
+  const onDragStart = (e) => e.preventDefault();
+
+  function syncToggle() {
+    if (!toggleBtn) return;
+    toggleBtn.classList.toggle('is-paused', userPaused);
+    toggleBtn.setAttribute('aria-label', userPaused ? 'Play photo carousel' : 'Pause photo carousel');
+    toggleBtn.title = userPaused ? 'Play' : 'Pause';
+  }
+  const onToggle = () => {
+    userPaused = !userPaused;
+    syncToggle();
+  };
+
+  const onResize = () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => {
+      build();
+      render(0);
+    }, 140);
+  };
+
+  build();
+  render(0);
+  syncToggle();
+  io.observe(section);
+  viewport.addEventListener('pointerdown', onPointerDown);
+  viewport.addEventListener('pointerenter', onPointerEnter);
+  viewport.addEventListener('pointerleave', onPointerLeave);
+  viewport.addEventListener('focusin', onFocusIn);
+  viewport.addEventListener('focusout', onFocusOut);
+  viewport.addEventListener('dragstart', onDragStart);
+  window.addEventListener('pointermove', onPointerMove);
+  window.addEventListener('pointerup', endDrag);
+  window.addEventListener('pointercancel', endDrag);
+  window.addEventListener('resize', onResize);
+  if (toggleBtn) toggleBtn.addEventListener('click', onToggle);
+
+  return {
+    destroy() {
+      visible = false;
+      cancelAnimationFrame(frame);
+      frame = 0;
+      clearTimeout(resizeTimer);
+      io.disconnect();
+      viewport.removeEventListener('pointerdown', onPointerDown);
+      viewport.removeEventListener('pointerenter', onPointerEnter);
+      viewport.removeEventListener('pointerleave', onPointerLeave);
+      viewport.removeEventListener('focusin', onFocusIn);
+      viewport.removeEventListener('focusout', onFocusOut);
+      viewport.removeEventListener('dragstart', onDragStart);
+      window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('pointerup', endDrag);
+      window.removeEventListener('pointercancel', endDrag);
+      window.removeEventListener('resize', onResize);
+      if (toggleBtn) toggleBtn.removeEventListener('click', onToggle);
+      viewport.classList.remove('is-dragging');
+      track.innerHTML = '';
+    }
+  };
 }
 
 // ================= COUNTDOWN & AMBIENCE =================

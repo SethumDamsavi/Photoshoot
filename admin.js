@@ -566,16 +566,20 @@ function renderProductsTable(prods) {
     return `
       <tr data-id="${prod.id}">
         <td>
-          <img src="${escapeHtml(imgSrc)}" alt="${escapeHtml(prod.name)}" class="table-thumb" onerror="this.onerror=null; this.src='/assets/portrait.jpg';">
+          <img src="${escapeHtml(imgSrc)}" alt="${escapeHtml(prod.name || 'Untitled photo')}" class="table-thumb" onerror="this.onerror=null; this.src='/assets/portrait.jpg';">
         </td>
         <td>
           <div class="product-cell-details">
-            <span class="product-cell-name">${escapeHtml(prod.name)}</span>
+            ${prod.name
+              ? `<span class="product-cell-name">${escapeHtml(prod.name)}</span>`
+              : '<span class="product-cell-name cell-placeholder">Untitled</span>'}
             ${prod.shortDescription ? `<span class="product-cell-desc">${escapeHtml(prod.shortDescription)}</span>` : ''}
           </div>
         </td>
         <td>
-          <span class="badge-category">${escapeHtml(prod.category || 'Portraits')}</span>
+          ${prod.category
+            ? `<span class="badge-category">${escapeHtml(prod.category)}</span>`
+            : '<span class="cell-placeholder">No album</span>'}
         </td>
         <td>
           <div style="display: flex; flex-direction: column; gap: 0.15rem;">
@@ -647,7 +651,7 @@ function openEditProductModal(id) {
   productModalTitle.textContent = 'Edit Birthday Photo';
 
   prodNameInput.value = prod.name || '';
-  prodCategoryInput.value = prod.category || 'Portraits';
+  prodCategoryInput.value = prod.category || '';
   prodDateInput.value = prod.date || 'October 9, 2026';
   prodLocationInput.value = prod.location || '';
   prodPublishedCheckbox.checked = prod.published !== false;
@@ -694,9 +698,10 @@ async function handleProductFormSubmit(e) {
   const existingProd = isEditing ? allProducts.find(p => p.id === id) : null;
   const attributes = existingProd && Array.isArray(existingProd.attributes) ? existingProd.attributes : [];
 
+  // Title and album are optional: a photo without an album is listed only under "All"
   const payload = {
     name: prodNameInput.value.trim(),
-    category: prodCategoryInput.value.trim() || 'Portraits',
+    category: prodCategoryInput.value.trim(),
     date: prodDateInput.value.trim() || 'October 9, 2026',
     location: prodLocationInput.value.trim() || 'Birthday Shoot',
     image: prodImageUrlInput.value.trim() || 'assets/portrait.jpg',
@@ -751,7 +756,8 @@ async function handleProductFormSubmit(e) {
 
 async function handleDeleteProduct(id) {
   const prod = allProducts.find(p => p.id === id);
-  const name = prod ? prod.name : `Photo #${id}`;
+  // Untitled photos are named by their number, since the title is optional
+  const name = prod && prod.name ? prod.name : `Photo #${id}`;
 
   if (!confirm(`Are you sure you want to remove "${name}" from the birthday archive?\nThis action cannot be undone.`)) {
     return;

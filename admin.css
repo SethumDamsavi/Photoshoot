@@ -647,6 +647,14 @@
   border: 1px solid var(--border-subtle, #f5dfe5);
 }
 
+/* Title or album left blank (both are optional) */
+.cell-placeholder {
+  font-size: 0.8125rem;
+  font-style: italic;
+  font-weight: 500;
+  color: var(--ink-muted, #8e6573);
+}
+
 .price-main {
   font-weight: 700;
   color: var(--ink-primary, #2d1822);

@@ -4,15 +4,15 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>Raveesha's 21st Birthday Celebration | Chapter 21 Photo Monograph</title>
+  <title>Raveesha's 21st Birthday Shoot | Chapter 21</title>
   <meta name="description"
-    content="An authentic celebration monograph preserving Raveesha's 21st birthday photoshoot in blush pink, soft white, and fresh garden roses.">
+    content="Photos from Raveesha's 21st birthday shoot. Browse the albums and open any photo full size.">
 
-  <!-- Curated Editorial Typography: Cormorant Garamond, Cinzel, Alex Brush, Caveat, Plus Jakarta Sans -->
+  <!-- Typography: Bodoni Moda (editorial serif and italic accents), Jost (hero masthead and UI sans) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link
-    href="https://fonts.googleapis.com/css2?family=Alex+Brush&family=Caveat:wght@500;600;700&family=Cinzel:wght@400;500;600;700&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap"
+    href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400..700;1,6..96,400;1,6..96,600&family=Jost:wght@300;400;500;600;700&display=swap"
     rel="stylesheet">
 
   <link rel="stylesheet" href="style.css">
@@ -20,27 +20,19 @@
 
 <body>
 
-  <!-- Botanical Watercolor Rose Page Corners (Exact Top Corners of Screen) -->
-  <div class="page-rose-corner corner-top-left" aria-hidden="true">
-    <img src="assets/rose_corner_left.png?v=4" alt="Watercolor pink rose corner arrangement" class="rose-corner-img">
-  </div>
-  <div class="page-rose-corner corner-top-right" aria-hidden="true">
-    <img src="assets/rose_corner_right.png?v=4" alt="Watercolor pink rose corner arrangement" class="rose-corner-img">
-  </div>
-
   <!-- Luxury Frosted Floating Site Header -->
   <header class="site-header" id="site-header">
     <div class="nav-container">
       <div class="nav-floating-bar">
         <!-- Navigation Links -->
         <nav class="nav-links" aria-label="Main Navigation">
-          <a href="#hero-section" class="nav-link">Monograph</a>
-          <a href="#gallery-controls" class="nav-link">Photo Gallery</a>
+          <a href="#hero-section" class="nav-link">Home</a>
+          <a href="#gallery-controls" class="nav-link">Photos</a>
         </nav>
 
         <!-- Right: Circular Login Button -->
         <div class="nav-actions">
-          <a href="/admin" class="nav-login-btn nav-login-circle-btn" id="nav-login-btn" title="Login" aria-label="Login">
+          <a href="/admin" class="nav-login-btn nav-login-circle-btn" id="nav-login-btn" title="Admin login" aria-label="Admin login">
             <svg class="nav-login-user-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
               <circle cx="12" cy="7" r="4"/>
@@ -51,135 +43,119 @@
     </div>
   </header>
 
-  <!-- Editorial Photoshoot Hero Section (Humanized Real Photography Focus) -->
   <main class="main-content">
-    <section class="hero-section" id="hero-section">
-      <div class="hero-wrapper">
-        <div class="hero-editorial-grid">
-          <!-- Left: Narrative & Typography Column -->
-          <div class="hero-narrative-col">
-            <!-- Grand Display Title with Pink & White Typography -->
-            <h1 class="hero-display-title">
-              <span class="title-main-line">Raveesha's <span class="title-serif-italic">21st Birthday
-                  Shoot</span></span>
-              <span class="title-sub-milestone">A Living Celebration in Pink &amp; White</span>
+    <section class="hero-section" id="hero-section" aria-labelledby="hero-title">
+      <!-- One full-screen rounded frame: the cover portrait fills it edge-to-edge while the
+           display title + intro sit over the photo at the bottom left. On phones held upright
+           the frame becomes a 16:9 landscape frame and the intro moves below it. -->
+      <div class="hero-frame">
+        <!-- Cover photo (set in Studio Admin); tapping open portrait space opens the lightbox -->
+        <div class="hero-photo" id="hero-cover-frame" role="button" tabindex="0"
+          aria-label="Open the cover photo full size">
+          <img id="profile-avatar-img" src="assets/portrait.jpg" alt="Raveesha's 21st birthday cover portrait"
+            class="hero-cover-img" fetchpriority="high" decoding="async">
+        </div>
+
+        <!-- Bottom editorial scrim overlay: title and intro -->
+        <div class="hero-frame-stage">
+          <div class="hero-copy">
+            <!-- Each word is its own span so the opening can raise them in turn -->
+            <h1 class="hero-display-title" id="hero-title">
+              <span class="hero-title-line"><span class="hero-word" style="--i: 0">Raveesha's</span></span>
+              <span class="hero-title-line"><em class="hero-word hero-title-accent" style="--i: 1">21st</em>
+                <span class="hero-title-phrase"><span class="hero-word" style="--i: 2">Birthday</span>
+                <span class="hero-word" style="--i: 3">Shoot</span></span></span>
             </h1>
 
-            <div class="hero-invitation-divider" aria-hidden="true">
-              <span class="divider-line"></span>
-              <span class="divider-rose-flourish">❦</span>
-              <span class="divider-line"></span>
-            </div>
-
-            <!-- Authentic Curator Note -->
             <p class="hero-curator-statement">
-              A tribute to Chapter 21. Preserving the joy, beauty, and unforgettable memories of Raveesha's 21st birthday — from sun-drenched golden hours and seaside laughter to candlelit birthday wishes and fresh French garden roses.
+              Welcome to Chapter 21: the joy, the laughter and the little moments from Raveesha's 21st birthday, all in one place.
             </p>
-
-
-            <!-- Action & Navigation Row -->
-            <div class="hero-cta-group">
-              <a href="#gallery-controls" class="btn btn-primary hero-explore-btn">
-                <span>Explore Photo Gallery</span>
-              </a>
-            </div>
-          </div>
-
-          <!-- Right: Real Photography Editorial Composition -->
-          <div class="hero-visual-col">
-            <div class="hero-photo-composition">
-              <!-- Primary Arch Portrait Frame (Real Image) -->
-              <div class="gallery-arch-card" id="hero-cover-frame" role="button" tabindex="0"
-                aria-label="View cover portrait in lightbox">
-                <div class="arch-inner-window">
-                  <img id="profile-avatar-img" src="assets/portrait.jpg" alt="Editorial 21st birthday portrait"
-                    class="hero-arch-img">
-                </div>
-
-                <!-- Editorial Plaque Below Arch -->
-                <div class="arch-caption-plaque">
-                  <div class="arch-plaque-title">
-                    <span class="arch-chapter-badge" id="hero-plaque-chapter">Chapter 21</span>
-                    <span class="arch-flourish">❦</span>
-                    <span class="arch-milestone-text" id="hero-plaque-subtitle">Milestone Portrait</span>
-                  </div>
-                  <div class="arch-plaque-meta">
-                    <span class="arch-meta-name" id="hero-plaque-name">Raveesha</span>
-                    <span class="arch-meta-dot">•</span>
-                    <span class="arch-meta-date" id="hero-plaque-date">October 2026</span>
-                  </div>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- Gallery Controls & Curated Photography Scrapbook Collection -->
-    <section class="gallery-controls-section" id="gallery-controls">
+    <!-- Gallery header: editorial title on the left, intro on the right, then one filter bar -->
+    <section class="gallery-controls-section" id="gallery-controls" aria-labelledby="gallery-title">
       <div class="controls-container">
-        <!-- Curated Editorial Header -->
-        <div class="gallery-editorial-header">
-          <h2 class="gallery-display-title">
+        <header class="gallery-editorial-header">
+          <h2 class="gallery-display-title" id="gallery-title">
             <span class="gallery-title-serif">Chapter 21</span>
-            <span class="gallery-title-script">Moments</span>
+            <span class="gallery-title-italic">in photos</span>
           </h2>
-          <div class="gallery-title-divider" aria-hidden="true">
-            <span class="divider-line"></span>
-            <span class="divider-rose-flourish">❦</span>
-            <span class="divider-line"></span>
-          </div>
-          <p class="gallery-curation-text">A curated collection of portraits, golden hour smiles, and milestone moments celebrating Raveesha's 21st birthday.</p>
-        </div>
+          <p class="gallery-curation-text">Choose an album or search by name, then tap any photo to see it full size.</p>
+        </header>
 
-        <!-- Album Filter Tabs -->
-        <div class="categories-scroll-wrapper">
-          <div class="category-tabs" id="category-tabs" role="tablist">
-            <button class="cat-tab active" data-category="all" role="tab" aria-selected="true">
-              All Moments
-            </button>
-            <!-- Populated dynamically via JS from Backend -->
-          </div>
-        </div>
-
-        <!-- Search & Sorting Toolbar -->
-        <div class="filter-toolbar">
-          <div class="search-input-box">
-            <span class="search-icon" aria-hidden="true">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"
-                stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="11" cy="11" r="8" />
-                <line x1="21" y1="21" x2="16.65" y2="16.65" />
-              </svg>
-            </span>
-            <input type="text" id="search-input" placeholder="Search memories, locations, or shot details..."
-              aria-label="Search photos">
-            <button id="clear-search-btn" class="clear-search-btn" style="display:none;" title="Clear search"
-              aria-label="Clear search">✕</button>
-          </div>
-
-          <div class="toolbar-right">
-            <div class="sort-select-wrapper">
-              <label for="sort-select" class="sr-only">Sort photos by</label>
-              <select id="sort-select" class="custom-select" aria-label="Sort photos">
-                <option value="newest">Newest Moments</option>
-                <option value="featured">Featured First</option>
-                <option value="title">Alphabetical (A-Z)</option>
-                <option value="oldest">Earliest First</option>
-              </select>
+        <div class="gallery-filter-bar">
+          <!-- Album filters: app.js fills this from the archive -->
+          <div class="gallery-album-rail">
+            <div class="categories-scroll-wrapper" id="category-rail">
+              <div class="category-tabs" id="category-tabs" role="group" aria-label="Filter photos by album">
+                <span class="cat-tab-indicator" aria-hidden="true"></span>
+                <button class="cat-tab active" type="button" data-category="all" aria-pressed="true">
+                  <span class="cat-tab-label">All</span>
+                </button>
+              </div>
             </div>
+          </div>
 
-            <!-- View Switch (Masonry vs Grid) -->
-            <div class="view-mode-toggle" role="group" aria-label="Gallery view layout">
-              <button id="view-masonry-btn" class="view-btn" title="Masonry Layout" aria-label="Masonry layout">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M3 3h8v10H3V3zm10 0h8v6h-8V3zM3 15h8v6H3v-6zm10-4h8v10h-8V11z" />
+          <!-- Search, sort and layout -->
+          <div class="gallery-tools">
+            <div class="gallery-search">
+              <svg class="gallery-search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="11" cy="11" r="7" />
+                <path d="m20 20-3.5-3.5" />
+              </svg>
+              <input type="search" id="search-input" placeholder="Search photos" aria-label="Search photos"
+                autocomplete="off" spellcheck="false" enterkeyhint="search">
+              <button id="clear-search-btn" class="clear-search-btn" type="button" title="Clear search"
+                aria-label="Clear search" hidden>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                  stroke-linecap="round" aria-hidden="true">
+                  <path d="M18 6 6 18M6 6l12 12" />
                 </svg>
               </button>
-              <button id="view-grid-btn" class="view-btn active" title="Uniform Grid Layout" aria-label="Grid layout">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M3 3h8v8H3V3zm10 0h8v8h-8V3zM3 13h8v8H3v-8zm10 0h8v8h-8v-8z" />
+            </div>
+
+            <div class="gallery-sort" title="Sort photos">
+              <svg class="gallery-sort-icon" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M7.5 19V5m0 0L4 8.5M7.5 5 11 8.5" />
+                <path d="M16.5 5v14m0 0L13 15.5m3.5 3.5 3.5-3.5" />
+              </svg>
+              <label for="sort-select" class="sr-only">Sort photos</label>
+              <select id="sort-select" class="gallery-sort-select">
+                <option value="newest">Newest first</option>
+                <option value="featured">Featured first</option>
+                <option value="title">Title A–Z</option>
+                <option value="oldest">Oldest first</option>
+              </select>
+              <svg class="gallery-sort-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="m6 9 6 6 6-6" />
+              </svg>
+            </div>
+
+            <div class="view-mode-toggle" role="group" aria-label="Gallery layout">
+              <button id="view-grid-btn" class="view-btn active" type="button" aria-pressed="true"
+                title="Grid view" aria-label="Grid view">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"
+                  stroke-linejoin="round" aria-hidden="true">
+                  <rect x="4" y="4" width="6.5" height="6.5" rx="1.6" />
+                  <rect x="13.5" y="4" width="6.5" height="6.5" rx="1.6" />
+                  <rect x="4" y="13.5" width="6.5" height="6.5" rx="1.6" />
+                  <rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.6" />
+                </svg>
+              </button>
+              <button id="view-masonry-btn" class="view-btn" type="button" aria-pressed="false"
+                title="Masonry view" aria-label="Masonry view">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"
+                  stroke-linejoin="round" aria-hidden="true">
+                  <rect x="4" y="4" width="6.5" height="10" rx="1.6" />
+                  <rect x="13.5" y="4" width="6.5" height="3.5" rx="1.6" />
+                  <rect x="4" y="17" width="6.5" height="3" rx="1.6" />
+                  <rect x="13.5" y="10.5" width="6.5" height="9.5" rx="1.6" />
                 </svg>
               </button>
             </div>
@@ -195,134 +171,110 @@
         <div id="photos-grid" class="photos-grid uniform-grid-mode" aria-live="polite">
           <div class="loading-state-card">
             <div class="loading-spinner"></div>
-            <p>Fetching memories from birthday archive...</p>
+            <p>Loading photos…</p>
           </div>
         </div>
 
         <!-- Aesthetic Scrapbook Footer Ribbon -->
         <div class="scrapbook-footer-motto-banner" aria-hidden="true">
           <div class="motto-ribbon-card">
-            <span class="motto-item"><span class="motto-heart">♥</span> CHAPTER 21</span>
+            <span class="motto-item"><svg class="motto-heart" width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35 10.55 20C5.4 15.36 2 12.27 2 8.5 2 5.41 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.08C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.41 22 8.5c0 3.77-3.4 6.86-8.55 11.54L12 21.35Z"/></svg> CHAPTER 21</span>
             <span class="motto-sep">•</span>
-            <span class="motto-item"><span class="motto-heart">♥</span> RADIANT &amp; BRIGHT</span>
+            <span class="motto-item"><svg class="motto-heart" width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35 10.55 20C5.4 15.36 2 12.27 2 8.5 2 5.41 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.08C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.41 22 8.5c0 3.77-3.4 6.86-8.55 11.54L12 21.35Z"/></svg> RADIANT &amp; BRIGHT</span>
             <span class="motto-sep">•</span>
-            <span class="motto-item"><span class="motto-heart">♥</span> FOREVER CHERISHED</span>
+            <span class="motto-item"><svg class="motto-heart" width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35 10.55 20C5.4 15.36 2 12.27 2 8.5 2 5.41 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.08C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.41 22 8.5c0 3.77-3.4 6.86-8.55 11.54L12 21.35Z"/></svg> FOREVER CHERISHED</span>
           </div>
         </div>
 
-        <!-- Empty State Message -->
+        <!-- Empty state: app.js swaps the wording for "nothing matches" vs "no photos yet" -->
         <div id="empty-state" class="empty-state" style="display: none;">
-          <div class="empty-icon-box" aria-hidden="true">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
-              <circle cx="12" cy="13" r="4" />
-            </svg>
-          </div>
-          <h2 class="empty-title">No moments found</h2>
-          <p class="empty-desc">No photos match your current album or search filter. Upload photos in Studio Admin or
-            reset your search filter.</p>
-          <a href="/admin" class="nav-btn primary-nav-btn">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
-              <line x1="12" y1="5" x2="12" y2="19" />
-              <line x1="5" y1="12" x2="19" y2="12" />
-            </svg>
-            <span>Upload Photos in Studio Admin</span>
-          </a>
+          <h2 class="empty-title" id="empty-title">No photos found</h2>
+          <p class="empty-desc" id="empty-desc">Nothing matches your search in this album. Try a different word, or show every photo.</p>
+          <button type="button" class="empty-reset-btn" id="empty-reset-btn">Show all photos</button>
         </div>
       </div>
     </section>
 
-    <!-- Personal Milestone Story & 5-Photo Highlight Reel (Matching Reference Section) -->
-    <section class="story-celebration-section" id="story-celebration">
+    <!-- Personal Story: hover an album on the left and its photo slides into the frame on the right -->
+    <section class="story-celebration-section" id="story-celebration" aria-labelledby="story-heading">
       <div class="story-celebration-card">
-        <div class="story-celebration-grid">
-          <!-- Left: Personal Story Narrative -->
-          <div class="story-narrative-col">
+        <header class="story-head">
+          <div class="story-title-wrap">
             <h2 class="story-heading" id="story-heading">Hi, I'm Raveesha</h2>
-            <div class="story-heart-emblem" aria-hidden="true">♥</div>
-            <p class="story-body-text" id="story-body-text">
-              Stepping into 21 surrounded by love, golden sunlight, and sweet celebration. This photoshoot captures the laughter, the elegance, and the wonderful memories of entering adulthood and celebrating this milestone chapter. Thank you for celebrating with me!
-            </p>
-            <div class="story-handwritten-note">
-              <span id="story-handwritten-note-text">Thanks for celebrating Chapter 21 with me!</span>
-            </div>
-            <div class="story-btn-row">
-              <a href="#gallery-controls" class="story-read-btn">EXPLORE 21ST GALLERY</a>
-            </div>
+          </div>
+          <p class="story-body-text" id="story-body-text">
+            I stepped into 21 surrounded by love, golden sunlight and sweet celebration. This shoot captures the laughter, the elegance and the memories of starting a brand-new chapter.
+          </p>
+        </header>
+
+        <div class="story-slider">
+          <!-- Chapter list: item 01 is the story portrait; album rows are added from the archive -->
+          <div class="story-slider-list" id="story-slider-list" role="tablist" aria-label="Chapters of the shoot" aria-orientation="vertical">
+            <button class="story-slider-item is-active" type="button" role="tab" id="story-tab-0"
+              aria-selected="true" aria-controls="story-slider-media" data-index="0">
+              <span class="story-slider-num">(01)</span>
+              <span class="story-slider-name">The Birthday Girl</span>
+            </button>
           </div>
 
-          <!-- Right: Tilted Polaroid with Botanical Watercolor Spray -->
-          <div class="story-visual-col">
-            <div class="story-polaroid-wrapper">
-              <!-- Watercolor floral spray behind the photo frame -->
-              <div class="story-floral-backdrop" aria-hidden="true">
-                <img src="assets/rose_corner_watercolor.png" alt="Watercolor floral arrangement"
-                  class="story-floral-img">
-              </div>
-
-              <!-- Tilted Polaroid Frame -->
-              <div class="story-polaroid-frame" role="button" tabindex="0"
-                aria-label="View 21st celebration portrait in lightbox" onclick="openLightbox(0)">
-                <div class="story-polaroid-inner">
-                  <img id="story-polaroid-img" src="assets/portrait.jpg" alt="Raveesha 21st birthday portrait" class="story-polaroid-photo">
-                </div>
-                <!-- Golden Paperclip Accent -->
-                <div class="story-gold-paperclip" aria-hidden="true">
-                  <svg width="24" height="34" viewBox="0 0 24 34" fill="none">
-                    <path
-                      d="M12 4 C8 4 5 7 5 11 L5 25 C5 29 8 32 12 32 C16 32 19 29 19 25 L19 9 C19 6.5 16.5 4.5 13.5 4.5 C10.5 4.5 8 6.5 8 9 L8 23"
-                      stroke="#dfa658" stroke-width="2.2" stroke-linecap="round" />
-                  </svg>
-                </div>
+          <div class="story-slider-media-wrap">
+            <div class="story-slider-media" id="story-slider-media" role="tabpanel" aria-labelledby="story-tab-0">
+              <div class="story-slider-track" id="story-slider-track">
+                <button class="story-slider-panel" type="button" data-index="0" aria-label="Open the birthday portrait">
+                  <img id="story-polaroid-img" src="assets/portrait.jpg" alt="Raveesha 21st birthday portrait" class="story-slider-img">
+                  <span class="story-slider-caption">Open portrait <span aria-hidden="true">&rarr;</span></span>
+                </button>
               </div>
             </div>
           </div>
+        </div>
+
+        <footer class="story-foot">
+          <p class="story-handwritten-note">
+            <span id="story-handwritten-note-text">Thanks for celebrating Chapter 21 with me!</span>
+          </p>
+          <a href="#gallery-controls" class="story-read-btn">See all the photos</a>
+        </footer>
+      </div>
+    </section>
+
+    <!-- Scan Carousel: a rose light line develops each photo from monochrome into full colour -->
+    <section class="scan-carousel-section" id="scan-carousel" aria-labelledby="scan-carousel-title">
+      <div class="scan-carousel-head">
+        <h2 class="scan-carousel-title" id="scan-carousel-title">Every moment, <em>brought to life</em></h2>
+      </div>
+      <div class="scan-carousel-viewport" id="scan-carousel-viewport">
+        <div class="scan-carousel-track" id="scan-carousel-track"></div>
+        <div class="scan-beam" aria-hidden="true">
+          <span class="scan-beam-halo"></span>
+          <span class="scan-beam-core"></span>
         </div>
       </div>
-
-      <!-- 5-Photo Full-Bleed Highlight Reel (Matching Reference Photo Strip) -->
-      <div class="story-photo-reel-container">
-        <button class="reel-nav-btn reel-nav-prev" id="reel-nav-prev" type="button" aria-label="Previous photos" title="Previous">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+      <div class="scan-carousel-controls">
+        <button class="scan-toggle-btn" id="scan-toggle-btn" type="button" aria-label="Pause photo carousel" title="Pause">
+          <svg class="scan-icon-pause" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="4" width="4" height="16" rx="1.2"/><rect x="14" y="4" width="4" height="16" rx="1.2"/></svg>
+          <svg class="scan-icon-play" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15a1 1 0 0 0 1.5.86l12.5-7.5a1 1 0 0 0 0-1.72L8.5 3.64A1 1 0 0 0 7 4.5z"/></svg>
         </button>
-        <div id="story-photo-reel-strip" class="story-photo-reel-strip" aria-label="Celebration Highlights Photo Strip">
-          <div class="reel-item" role="button" tabindex="0" data-photo-id="3" data-photo-index="2"
-            aria-label="View golden hour birthday sunset portrait">
-            <img src="/assets/golden_hour.jpg" alt="Golden hour 21st birthday portrait" class="reel-photo">
-          </div>
-          <div class="reel-item" role="button" tabindex="0" data-photo-id="5" data-photo-index="3" aria-label="View fresh pink and white celebration roses">
-            <img src="/assets/pink_white_roses.jpg" alt="Pink and white celebration garden roses" class="reel-photo">
-          </div>
-          <div class="reel-item" role="button" tabindex="0" data-photo-id="4" data-photo-index="1"
-            aria-label="View shoreline birthday stroll">
-            <img src="/assets/beach_candid_shore.jpg" alt="Shoreline birthday candid stroll" class="reel-photo">
-          </div>
-          <div class="reel-item" role="button" tabindex="0" data-photo-id="2" data-photo-index="4" aria-label="View 21st birthday cake and wishes">
-            <img src="/assets/cake.jpg" alt="21st birthday cake with floral blooms" class="reel-photo">
-          </div>
-          <div class="reel-item" role="button" tabindex="0" data-photo-id="1" data-photo-index="0"
-            aria-label="View seaside 21st birthday celebration sunset">
-            <img src="/assets/beach_birthday_27.jpg" alt="Seaside 21st birthday celebration sunset" class="reel-photo">
-          </div>
-        </div>
-        <button class="reel-nav-btn reel-nav-next" id="reel-nav-next" type="button" aria-label="Next photos" title="Next">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
-        </button>
+        <span class="scan-carousel-tip">
+          <span class="tip-touch"><span class="tip-phrase">Swipe to browse &middot;</span> <span class="tip-phrase">tap a photo to open it</span></span>
+          <span class="tip-mouse"><span class="tip-phrase">Drag to browse &middot;</span> <span class="tip-phrase">click a photo to open it</span></span>
+        </span>
       </div>
     </section>
   </main>
 
   <!-- Footer -->
   <footer class="site-footer">
-    <div class="footer-container">
-      <div class="footer-col-left">
-        <span class="footer-brand">
-          <img src="assets/beach_roses_heels.jpg" alt="Rose thumb" class="footer-thumb-inline">
-          The 21st Birthday Archive
-        </span>
-        <p class="footer-text">
-          An authentic editorial monograph celebrating Raveesha's 21st birthday photoshoot. Every smile, sunset glow, and milestone moment preserved in timeless blush pink and white.
-        </p>
+    <div class="footer-shell">
+      <div class="footer-meta">
+        <span>Chapter 21 &middot; Forever cherished</span>
+        <a href="#hero-section" class="footer-link footer-top-link">Back to top <span aria-hidden="true">&uarr;</span></a>
+      </div>
+
+      <!-- Oversized wordmark, cut off by the card's bottom edge -->
+      <div class="footer-wordmark" aria-hidden="true">
+        <span class="footer-wordmark-ghost">RAVEESHA'S 21ST</span>
+        <span class="footer-wordmark-text">RAVEESHA'S 21ST</span>
       </div>
     </div>
   </footer>
@@ -334,18 +286,18 @@
 
     <!-- Top Floating Toolbar -->
     <header class="lightbox-toolbar">
-      <div class="lightbox-counter-pill" id="lightbox-counter">Moment 1 of 6</div>
+      <div class="lightbox-counter-pill" id="lightbox-counter">Photo 1 of 6</div>
       <div class="lightbox-actions">
         <!-- Toggle Info / Cinema Mode -->
-        <button id="lb-cinema-btn" class="lb-tool-btn" title="Toggle Details & Cinema View (I)"
-          aria-label="Toggle details drawer">
+        <button id="lb-cinema-btn" class="lb-tool-btn" title="Hide details (I)"
+          aria-label="Show or hide photo details">
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
             <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
             <line x1="15" y1="3" x2="15" y2="21" />
           </svg>
         </button>
         <!-- Share moment -->
-        <button id="lb-share-btn" class="lb-tool-btn" title="Share Moment Link" aria-label="Share photo">
+        <button id="lb-share-btn" class="lb-tool-btn" title="Share this photo" aria-label="Share this photo">
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
             <circle cx="18" cy="5" r="3" />
             <circle cx="6" cy="12" r="3" />
@@ -355,7 +307,7 @@
           </svg>
         </button>
         <!-- Favorite heart -->
-        <button id="lb-favorite-btn" class="lb-tool-btn" title="Toggle Favorite (F)" aria-label="Favorite photo">
+        <button id="lb-favorite-btn" class="lb-tool-btn" title="Favorite (F)" aria-label="Favorite this photo">
           <svg class="heart-icon-svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor"
             stroke-width="1.8">
             <path
@@ -363,8 +315,8 @@
           </svg>
         </button>
         <!-- Close (Esc) -->
-        <button id="lb-close-btn" class="lb-tool-btn close-lb-btn" title="Close Lightbox (Esc)"
-          aria-label="Close modal">
+        <button id="lb-close-btn" class="lb-tool-btn close-lb-btn" title="Close (Esc)"
+          aria-label="Close photo">
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
             <line x1="18" y1="6" x2="6" y2="18" />
             <line x1="6" y1="6" x2="18" y2="18" />
@@ -378,7 +330,7 @@
       <!-- Media Viewport -->
       <div class="lightbox-media-wrapper" id="lightbox-media-wrapper">
         <div class="lightbox-img-container" id="lightbox-img-container">
-          <button id="lb-prev-btn" class="lb-nav-btn lb-prev" aria-label="Previous photo (Left Arrow)">
+          <button id="lb-prev-btn" class="lb-nav-btn lb-prev" aria-label="Previous photo">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <polyline points="15 18 9 12 15 6" />
             </svg>
@@ -386,7 +338,7 @@
 
           <img id="lightbox-image" src="" alt="Birthday photoshoot photograph" class="lightbox-img">
 
-          <button id="lb-next-btn" class="lb-nav-btn lb-next" aria-label="Next photo (Right Arrow)">
+          <button id="lb-next-btn" class="lb-nav-btn lb-next" aria-label="Next photo">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <polyline points="9 18 15 12 9 6" />
             </svg>
