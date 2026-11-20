@@ -2,3 +2,9 @@ node_modules/
 dist/
 .DS_Store
 *.log
+
+# Private settings (admin sign-in, tokens): never commit these
+.env
+.env.*
+!.env.example
+.vercel

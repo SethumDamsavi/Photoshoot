@@ -4,8 +4,28 @@
  * Zero Pricing - Dedicated to Photography & Milestone Memories.
  */
 
+// Sign-in lasts only while this browser tab is open (sessionStorage), so coming back to the
+// admin later asks for the password again. Older versions kept it in localStorage, which
+// signed people in automatically for a day; that copy is cleared.
+const SESSION_KEY = 'admin_token';
+
+function readSession() {
+  try { return sessionStorage.getItem(SESSION_KEY) || ''; } catch (_) { return ''; }
+}
+
+function saveSession(token) {
+  try { sessionStorage.setItem(SESSION_KEY, token); } catch (_) {}
+}
+
+function clearSession() {
+  try { sessionStorage.removeItem(SESSION_KEY); } catch (_) {}
+  try { localStorage.removeItem(SESSION_KEY); } catch (_) {}
+}
+
+try { localStorage.removeItem(SESSION_KEY); } catch (_) {}
+
 // State
-let authToken = localStorage.getItem('admin_token') || '';
+let authToken = readSession();
 let currentUser = null;
 let allProducts = [];
 let allCategories = [];
@@ -182,13 +202,19 @@ async function checkAuthSession() {
   }
 
   try {
-    const res = await apiRequest('/api/auth/me');
+    const res = await fetch('/api/auth/me', {
+      headers: { Authorization: `Bearer ${authToken}` },
+      cache: 'no-store'
+    });
     if (res.ok) {
       const data = await res.json();
       currentUser = data.user;
       showDashboardView();
       loadDashboardData();
     } else {
+      // Expired or no longer valid: quietly back to the sign-in form
+      authToken = '';
+      clearSession();
       showLoginView();
     }
   } catch (_) {
@@ -231,7 +257,8 @@ function setupEventListeners() {
       e.preventDefault();
       loginErrorAlert.style.display = 'none';
       const username = loginUsernameInput.value.trim();
-      const password = loginPasswordInput.value.trim();
+      // Not trimmed: spaces can be part of a password
+      const password = loginPasswordInput.value;
 
       const submitBtn = document.getElementById('login-submit-btn');
       if (submitBtn) {
@@ -250,7 +277,8 @@ function setupEventListeners() {
         if (res.ok && data.success) {
           authToken = data.token;
           currentUser = data.user;
-          localStorage.setItem('admin_token', authToken);
+          saveSession(authToken);
+          loginPasswordInput.value = '';
           showToast(`Welcome back, ${currentUser.name || currentUser.username}!`);
           showDashboardView();
           loadDashboardData();
@@ -268,6 +296,10 @@ function setupEventListeners() {
         }
       }
     });
+
+    // The form is ready: the button starts disabled in admin.html until this point
+    const readyBtn = document.getElementById('login-submit-btn');
+    if (readyBtn) readyBtn.disabled = false;
   }
 
   // Logout
@@ -437,7 +469,7 @@ function handleLogout() {
   }
   authToken = '';
   currentUser = null;
-  localStorage.removeItem('admin_token');
+  clearSession();
   showLoginView();
   showToast('Logged out securely.');
 }

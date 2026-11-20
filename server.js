@@ -5,6 +5,8 @@ import { handleApiRequest } from './backend-api.js';
 
 const PORT = process.env.PORT || 5173;
 const PUBLIC_DIR = process.cwd();
+// Dotfiles and dot-folders, the data and dependency folders, and the server's own code
+const PRIVATE_PATH = /(^|\/)\.|^\/(data|api|node_modules)(\/|$)|^\/(backend-api|server|vite\.config)\.js$|^\/package(-lock)?\.json$/i;
 
 const MIME_TYPES = {
   '.html': 'text/html; charset=utf-8',
@@ -36,10 +38,20 @@ const server = http.createServer(async (req, res) => {
   }
 
   // 3. Serve static file
-  const filePath = path.join(PUBLIC_DIR, decodeURIComponent(pathname));
+  let decodedPath;
+  try {
+    decodedPath = decodeURIComponent(pathname);
+  } catch (_) {
+    res.statusCode = 400;
+    res.end('Bad Request');
+    return;
+  }
+  const filePath = path.join(PUBLIC_DIR, decodedPath);
 
-  // Security: prevent directory traversal
-  if (!filePath.startsWith(PUBLIC_DIR)) {
+  // Security: prevent directory traversal, and never serve private or server-side files
+  // (.env.local, .git, the data folder, the server code)
+  const relativePath = '/' + path.relative(PUBLIC_DIR, filePath).split(path.sep).join('/');
+  if (!filePath.startsWith(PUBLIC_DIR) || PRIVATE_PATH.test(relativePath)) {
     res.statusCode = 403;
     res.end('Access Denied');
     return;
@@ -68,5 +80,7 @@ const server = http.createServer(async (req, res) => {
 server.listen(PORT, () => {
   console.log(`\n✨ Server running at: http://localhost:${PORT}/`);
   console.log(`👑 Admin Dashboard at: http://localhost:${PORT}/admin`);
-  console.log(`🔑 Admin Credentials: Username: "admin" | Password: "admin123"\n`);
+  if (!process.env.ADMIN_PASSWORD) {
+    console.log('🔒 Admin sign-in is off: put ADMIN_USERNAME and ADMIN_PASSWORD in .env.local (see .env.example).\n');
+  }
 });

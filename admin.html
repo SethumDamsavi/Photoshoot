@@ -33,7 +33,9 @@
         <p class="login-desc">Sign in to curate, upload, and organize Raveesha's 21st birthday photo archive.</p>
       </div>
 
-      <form id="login-form" class="login-form">
+      <!-- POST, and the button stays disabled until admin.js is ready, so a password can never
+           be sent in the address bar by a submit that happens before the script loads -->
+      <form id="login-form" class="login-form" method="post">
         <div id="login-error" class="login-error-alert" style="display: none;"></div>
 
         <div class="form-group">
@@ -54,7 +56,7 @@
           </div>
         </div>
 
-        <button type="submit" id="login-submit-btn" class="btn btn-primary login-btn">
+        <button type="submit" id="login-submit-btn" class="btn btn-primary login-btn" disabled>
           <span>Sign In to Studio</span>
         </button>
       </form>

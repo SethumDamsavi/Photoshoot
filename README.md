@@ -6,18 +6,25 @@ A modern, high-performance birthday photoshoot album and living photo gallery po
 
 ---
 
-## 👑 Administrative Studio Credentials
+## 👑 Studio Admin Sign-in
 
-- **Studio Admin URL:** [http://localhost:5173/admin](http://localhost:5173/admin)
-- **Username:** `admin`
-- **Password:** `admin123`
+The admin account is set with private environment variables, never in this repository (it is public):
+
+- `ADMIN_USERNAME`: the name typed in the Username box
+- `ADMIN_PASSWORD`: at least 10 characters; without it, nobody can sign in
+- `ADMIN_TOKEN_SECRET` (optional): a long random string used to sign sessions
+
+**Live site:** add them in Vercel → the project → Settings → Environment Variables, then redeploy.
+**This computer:** copy `.env.example` to `.env.local` and fill it in (git ignores `.env.local`).
+
+A sign-in lasts until the browser tab is closed (at most 8 hours). Changing the password signs everyone out.
 
 ---
 
 ## 🔌 Integrated Backend Architecture
 
 - **Backend API Endpoints:**
-  - `POST /api/auth/login` — Authenticates admin, creates secure 24-hour Bearer session token.
+  - `POST /api/auth/login` — Checks the admin sign-in from the environment variables and returns a signed 8-hour session token.
   - `GET /api/auth/me` — Verifies active admin session.
   - `POST /api/auth/logout` — Destroys current session.
   - `GET /api/products` (alias `GET /api/photos`) — Fetches birthday photoshoot moments with search, album filtering, and sorting (`newest`, `featured`, `oldest`, `title`).
@@ -33,7 +40,6 @@ A modern, high-performance birthday photoshoot album and living photo gallery po
 - **Data Persistence:**
   - `data/products.json` — Birthday photoshoot moments and captions.
   - `data/categories.json` — Photo albums taxonomy.
-  - `data/users.json` — Admin user credentials with SHA-256 hash and salt.
   - `uploads/` — Uploaded photo image files.
 
 ---

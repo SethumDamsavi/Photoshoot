@@ -1,13 +1,22 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import { defaultProducts, defaultCategories, defaultUsers, defaultSettings } from './default-data.js';
+import { defaultProducts, defaultCategories, defaultSettings } from './default-data.js';
+
+// Local development: private settings (the admin sign-in) can live in .env.local, which git
+// ignores. On Vercel they come from the project's environment variables instead.
+try {
+  if (typeof process.loadEnvFile === 'function' && fs.existsSync(path.resolve(process.cwd(), '.env.local'))) {
+    process.loadEnvFile(path.resolve(process.cwd(), '.env.local'));
+  }
+} catch (err) {
+  console.warn('Could not read .env.local:', err.message);
+}
 
 const DATA_DIR = path.resolve(process.cwd(), 'data');
 const UPLOADS_DIR = path.resolve(process.cwd(), 'uploads');
 const PRODUCTS_FILE = path.join(DATA_DIR, 'products.json');
 const CATEGORIES_FILE = path.join(DATA_DIR, 'categories.json');
-const USERS_FILE = path.join(DATA_DIR, 'users.json');
 const SETTINGS_FILE = path.join(DATA_DIR, 'settings.json');
 
 // Safely ensure directories exist
@@ -40,7 +49,6 @@ async function redisCommand(command) {
 function defaultsFor(file) {
   if (file === PRODUCTS_FILE) return defaultProducts;
   if (file === CATEGORIES_FILE) return defaultCategories;
-  if (file === USERS_FILE) return defaultUsers;
   return defaultSettings;
 }
 
@@ -119,7 +127,6 @@ function syncDefaultDataFile() {
     if (!fs.existsSync(defaultDataPath)) return;
     const content = `export const defaultCategories = ${JSON.stringify(readLocalJSON(CATEGORIES_FILE), null, 2)};\n\n` +
       `export const defaultProducts = ${JSON.stringify(readLocalJSON(PRODUCTS_FILE), null, 2)};\n\n` +
-      `export const defaultUsers = ${JSON.stringify(readLocalJSON(USERS_FILE), null, 2)};\n\n` +
       `export const defaultSettings = ${JSON.stringify(readLocalJSON(SETTINGS_FILE), null, 2)};\n`;
     fs.writeFileSync(defaultDataPath, content, 'utf-8');
   } catch (err) {
@@ -147,37 +154,57 @@ async function storeUploadedImage(buffer, mimeType, safeFilename, dataUrl) {
   return dataUrl;
 }
 
-// Authentication Helpers
-function verifyPassword(inputPassword, user) {
-  if (inputPassword === '2005' || inputPassword === 'admin123') return true;
-  if (user.passwordHash === inputPassword) return true;
-  try {
-    const hash = crypto.createHash('sha256').update(inputPassword + (user.salt || '')).digest('hex');
-    return hash === user.passwordHash;
-  } catch (_) {
-    return false;
-  }
+// ================= ADMIN SIGN-IN =================
+// The admin account lives in private environment variables, never in this repository (it is
+// public on GitHub): ADMIN_USERNAME and ADMIN_PASSWORD. On Vercel: Project → Settings →
+// Environment Variables. Locally: a .env.local file. Without a password of at least
+// MIN_PASSWORD_LENGTH characters, nobody can sign in.
+const ADMIN_USERNAME = (process.env.ADMIN_USERNAME || 'admin').trim() || 'admin';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '';
+const MIN_PASSWORD_LENGTH = 10;
+const SIGN_IN_READY = ADMIN_PASSWORD.length >= MIN_PASSWORD_LENGTH;
+const FAILED_SIGN_IN_DELAY_MS = 900;
+
+// Compares fixed-length digests in constant time, so a wrong guess reveals nothing about
+// how close it was
+function sameSecret(a, b) {
+  const da = crypto.createHash('sha256').update(String(a)).digest();
+  const db = crypto.createHash('sha256').update(String(b)).digest();
+  return crypto.timingSafeEqual(da, db);
 }
 
-// Session tokens are signed (not kept in memory) so every serverless instance accepts them
-const SESSION_TTL_MS = 24 * 60 * 60 * 1000;
-const TOKEN_SECRET = process.env.ADMIN_TOKEN_SECRET || REDIS_TOKEN || process.env.BLOB_READ_WRITE_TOKEN ||
-  crypto.createHash('sha256').update(JSON.stringify(defaultUsers)).digest('hex');
+function checkCredentials(username, password) {
+  if (!SIGN_IN_READY) return false;
+  const nameOk = sameSecret(String(username || '').trim().toLowerCase(), ADMIN_USERNAME.toLowerCase());
+  const passwordOk = sameSecret(typeof password === 'string' ? password : '', ADMIN_PASSWORD);
+  return nameOk && passwordOk;
+}
+
+// Sessions are signed tokens, so every serverless instance accepts them without shared memory.
+// The signing key mixes a private secret with the admin username and password: changing the
+// password signs everyone out, and "v2" retired every session issued before sign-in moved
+// out of the repository.
+const SESSION_TTL_MS = 8 * 60 * 60 * 1000;
+const TOKEN_SECRET_BASE = process.env.ADMIN_TOKEN_SECRET || REDIS_TOKEN || process.env.BLOB_READ_WRITE_TOKEN || 'birthday-shoot';
+const TOKEN_KEY = crypto.createHmac('sha256', TOKEN_SECRET_BASE)
+  .update(`admin-session-v2|${ADMIN_USERNAME.toLowerCase()}|${ADMIN_PASSWORD}`)
+  .digest();
 
 function signToken(user) {
   const payload = Buffer.from(JSON.stringify({ user, expiresAt: Date.now() + SESSION_TTL_MS })).toString('base64url');
-  const signature = crypto.createHmac('sha256', TOKEN_SECRET).update(payload).digest('base64url');
+  const signature = crypto.createHmac('sha256', TOKEN_KEY).update(payload).digest('base64url');
   return `${payload}.${signature}`;
 }
 
 export function verifyAuthToken(req) {
+  if (!SIGN_IN_READY) return null;
   const authHeader = req.headers['authorization'] || '';
   const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : authHeader.trim();
-  if (!token || !token.includes('.')) return null;
+  if (!token || token.split('.').length !== 2) return null;
 
   const [payload, signature] = token.split('.');
-  const expected = crypto.createHmac('sha256', TOKEN_SECRET).update(payload).digest('base64url');
-  if (signature.length !== expected.length ||
+  const expected = crypto.createHmac('sha256', TOKEN_KEY).update(payload).digest('base64url');
+  if (!signature || signature.length !== expected.length ||
       !crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) {
     return null;
   }
@@ -260,26 +287,30 @@ export async function handleApiRequest(req, res) {
     return true;
   };
 
-  // 1. AUTH: Login
+  // 1. AUTH: Login (the one admin account from the environment variables)
   if (pathname === '/api/auth/login' && method === 'POST') {
-    const { username, password } = await parseBody(req);
-    const users = await readJSON(USERS_FILE);
-    const user = users.find(u => u.username.toLowerCase() === (username || '').trim().toLowerCase());
+    if (!SIGN_IN_READY) {
+      return sendJSON(503, {
+        success: false,
+        error: `Sign-in isn't set up yet. Add ADMIN_USERNAME and ADMIN_PASSWORD (at least ${MIN_PASSWORD_LENGTH} characters) to this site's environment variables, then redeploy.`
+      });
+    }
 
-    if (!user || !verifyPassword(password, user)) {
+    const { username, password } = await parseBody(req);
+    if (!checkCredentials(username, password)) {
+      // A pause after every wrong guess makes guessing passwords slow
+      await new Promise(resolve => setTimeout(resolve, FAILED_SIGN_IN_DELAY_MS));
       return sendJSON(401, {
         success: false,
         error: 'Invalid username or password.'
       });
     }
 
-    // Generate signed session token
-    const token = signToken({ username: user.username, name: user.name, role: user.role });
-
+    const user = { username: ADMIN_USERNAME, name: ADMIN_USERNAME, role: 'administrator' };
     return sendJSON(200, {
       success: true,
-      token,
-      user: { username: user.username, name: user.name, role: user.role }
+      token: signToken(user),
+      user
     });
   }
 
