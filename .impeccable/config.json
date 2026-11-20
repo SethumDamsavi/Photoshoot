@@ -1,0 +1,62 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "broken-image",
+        "value": "*",
+        "files": [
+          "index.html"
+        ],
+        "createdAt": "2026-11-08T11:19:05.834Z",
+        "reason": "Claude: #lightbox-image is a hidden dialog slot whose src app.js sets on open; it never renders empty"
+      },
+      {
+        "rule": "cramped-padding",
+        "value": "*",
+        "files": [
+          "index.html"
+        ],
+        "createdAt": "2026-11-08T11:35:24.386Z",
+        "reason": "Claude: flagged sections all pad with clamp()/var() values the static detector resolves as 0; rendered captures show 14-190px insets"
+      },
+      {
+        "rule": "italic-serif-display",
+        "value": "*",
+        "files": [
+          "index.html"
+        ],
+        "createdAt": "2026-11-08T11:35:48.592Z",
+        "reason": "Claude: direction contract is a fashion-magazine birthday issue with a Didone (Bodoni Moda) masthead; the rule notes editorial/magazine register may want this"
+      },
+      {
+        "rule": "gradient-text",
+        "value": "*",
+        "files": [
+          "index.html"
+        ],
+        "createdAt": "2026-11-08T12:59:40.275Z",
+        "reason": "user-requested: footer RAVEESHA wordmark reproduces the gradient-filled lettering from the user's reference screenshot"
+      },
+      {
+        "rule": "gradient-text",
+        "value": "*",
+        "files": [
+          "style.css"
+        ],
+        "createdAt": "2026-11-08T13:00:09.973Z",
+        "reason": "user-requested: .footer-wordmark-text reproduces the gradient-filled lettering from the user's reference screenshot"
+      },
+      {
+        "rule": "nested-cards",
+        "value": "*",
+        "files": [
+          "index.html"
+        ],
+        "createdAt": "2026-11-08T16:51:50.988Z",
+        "reason": "Claude: the hero's frosted plaque and Chapter 21 seal are overlays on the arch photo, the same caption-over-photo pattern as the gallery photo cards, not a card nested in a layout card"
+      }
+    ]
+  }
+}
