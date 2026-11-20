@@ -774,6 +774,10 @@ input, select, textarea {
   text-wrap: pretty;
 }
 
+.gallery-hint-phone {
+  display: none;
+}
+
 /* ================= GALLERY FILTER BAR ================= */
 /* One row while the albums and tools fit side by side; otherwise the tools wrap under the
    rail and both stretch full width. Driven by content, so adding albums never clips them. */
@@ -1144,9 +1148,20 @@ input, select, textarea {
   }
 }
 
-/* Phones: the title and intro are centred, with the intro's lines evened out */
+/* Phones: the title and intro are centred, with the intro's lines evened out, and the album
+   tabs and search / sort / layout tools are hidden (the gallery always shows every photo) */
 @media (max-width: 700px) {
+  .gallery-filter-bar,
+  .gallery-hint-wide {
+    display: none;
+  }
+
+  .gallery-hint-phone {
+    display: inline;
+  }
+
   .gallery-editorial-header {
+    margin-bottom: 8px;
     text-align: center;
   }
 

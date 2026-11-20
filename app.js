@@ -1196,7 +1196,7 @@ function getStoryStripEntries() {
   const entries = [];
   const used = new Set();
   getStoryAlbums().forEach(album => {
-    entries.push({ kind: 'album', slug: album.slug, name: album.name, count: album.count, src: album.cover.image });
+    entries.push({ kind: 'album', slug: album.slug, name: album.name, count: album.count, src: album.cover.image, coverId: album.cover.id });
     used.add(album.cover.id);
   });
   const want = STORY_STRIP_MAX - 1;
@@ -1255,7 +1255,14 @@ function createStoryStrip() {
   });
   strip.dataset.count = String(entries.length);
 
-  const actionText = (entry) => (entry.kind === 'album' ? 'View album' : entry.kind === 'portrait' ? 'Open portrait' : 'Open photo');
+  // Phones hide the album tabs, so an album there opens its cover photo instead of filtering
+  // the gallery (which would leave no way back to "All")
+  const albumTabsShown = () => {
+    const bar = document.querySelector('.gallery-filter-bar');
+    return Boolean(bar && getComputedStyle(bar).display !== 'none');
+  };
+  const actionText = (entry) => (entry.kind === 'album' ? (albumTabsShown() ? 'View album' : 'Open photo')
+    : entry.kind === 'portrait' ? 'Open portrait' : 'Open photo');
 
   let active = -1;
   function setActive(index) {
@@ -1275,7 +1282,8 @@ function createStoryStrip() {
 
   function openEntry(entry) {
     if (entry.kind === 'album') {
-      showAlbumInGallery(entry.slug);
+      if (albumTabsShown()) showAlbumInGallery(entry.slug);
+      else openLightboxForPhotoId(entry.coverId);
       return;
     }
     if (entry.kind === 'photo') {
