@@ -8,11 +8,12 @@
   <meta name="description"
     content="Photos from Raveesha's 21st birthday shoot. Browse the albums and open any photo full size.">
 
-  <!-- Typography: Bodoni Moda (editorial serif and italic accents), Jost (hero masthead and UI sans) -->
+  <!-- Typography: Bodoni Moda (editorial serif and italic accents), Jost (hero masthead and UI sans),
+       Noto Serif Display extra-condensed (the story section's tall headline) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link
-    href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400..700;1,6..96,400;1,6..96,600&family=Jost:wght@300;400;500;600;700&display=swap"
+    href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400..700;1,6..96,400;1,6..96,600&family=Jost:wght@300;400;500;600;700&family=Noto+Serif+Display:wdth,wght@62.5,300..500&display=swap"
     rel="stylesheet">
 
   <link rel="stylesheet" href="style.css">
@@ -195,37 +196,26 @@
       </div>
     </section>
 
-    <!-- Personal Story: hover an album on the left and its photo slides into the frame on the right -->
+    <!-- Her story: an editorial spread on a deep berry frame. Left: a tall condensed headline with
+         the story under it. Right: a strip of photos that steps down in size from the one in focus;
+         tapping a smaller photo brings it into focus, tapping the photo in focus opens it.
+         Photo 01 (the story portrait) lives here so Studio Admin settings can update it; app.js
+         adds album covers and photos after it. -->
     <section class="story-celebration-section" id="story-celebration" aria-labelledby="story-heading">
-      <div class="story-celebration-card">
-        <header class="story-head">
-          <div class="story-title-wrap">
-            <h2 class="story-heading" id="story-heading">Hi, I'm Raveesha</h2>
-          </div>
+      <div class="story-frame">
+        <div class="story-copy">
+          <h2 class="story-heading" id="story-heading">Hi, I'm Raveesha</h2>
           <p class="story-body-text" id="story-body-text">
             I stepped into 21 surrounded by love, golden sunlight and sweet celebration. This shoot captures the laughter, the elegance and the memories of starting a brand-new chapter.
           </p>
-        </header>
+        </div>
 
-        <div class="story-slider">
-          <!-- Chapter list: item 01 is the story portrait; album rows are added from the archive -->
-          <div class="story-slider-list" id="story-slider-list" role="tablist" aria-label="Chapters of the shoot" aria-orientation="vertical">
-            <button class="story-slider-item is-active" type="button" role="tab" id="story-tab-0"
-              aria-selected="true" aria-controls="story-slider-media" data-index="0">
-              <span class="story-slider-num">(01)</span>
-              <span class="story-slider-name">The Birthday Girl</span>
+        <div class="story-gallery">
+          <div class="story-strip" id="story-strip" role="group" aria-label="Photos from the shoot">
+            <button class="story-strip-item" type="button" data-kind="portrait" data-d="0" aria-current="true"
+              aria-label="Open portrait: The Birthday Girl">
+              <img id="story-polaroid-img" src="assets/portrait.jpg" alt="Raveesha 21st birthday portrait" class="story-strip-img">
             </button>
-          </div>
-
-          <div class="story-slider-media-wrap">
-            <div class="story-slider-media" id="story-slider-media" role="tabpanel" aria-labelledby="story-tab-0">
-              <div class="story-slider-track" id="story-slider-track">
-                <button class="story-slider-panel" type="button" data-index="0" aria-label="Open the birthday portrait">
-                  <img id="story-polaroid-img" src="assets/portrait.jpg" alt="Raveesha 21st birthday portrait" class="story-slider-img">
-                  <span class="story-slider-caption">Open portrait <span aria-hidden="true">&rarr;</span></span>
-                </button>
-              </div>
-            </div>
           </div>
         </div>
 
@@ -238,27 +228,24 @@
       </div>
     </section>
 
-    <!-- Scan Carousel: a rose light line develops each photo from monochrome into full colour -->
-    <section class="scan-carousel-section" id="scan-carousel" aria-labelledby="scan-carousel-title">
-      <div class="scan-carousel-head">
-        <h2 class="scan-carousel-title" id="scan-carousel-title">Every moment, <em>brought to life</em></h2>
-      </div>
-      <div class="scan-carousel-viewport" id="scan-carousel-viewport">
-        <div class="scan-carousel-track" id="scan-carousel-track"></div>
-        <div class="scan-beam" aria-hidden="true">
-          <span class="scan-beam-halo"></span>
-          <span class="scan-beam-core"></span>
+    <!-- Photo reel: a full-screen frame with a 3D carousel that brings each photo to the front
+         in turn (autoplay, swipe or drag, tap a side photo, arrow keys). app.js fills the cards. -->
+    <section class="reel-section" id="photo-reel" aria-labelledby="reel-title">
+      <div class="reel-frame">
+        <header class="reel-head">
+          <h2 class="reel-title" id="reel-title">
+            <span class="reel-title-line">Every moment,</span>
+            <span class="reel-title-line reel-title-accent">brought to life</span>
+          </h2>
+          <p class="reel-intro">Raveesha's 21st, one photo at a time. Swipe to browse, and tap the photo in front to see it full size.</p>
+        </header>
+
+        <div class="reel" id="reel" role="region" aria-roledescription="carousel" aria-label="Photos from Raveesha's 21st">
+          <div class="reel-stage" id="reel-stage">
+            <div class="reel-track" id="reel-track"></div>
+          </div>
+          <p class="sr-only" id="reel-status" aria-live="off" aria-atomic="true"></p>
         </div>
-      </div>
-      <div class="scan-carousel-controls">
-        <button class="scan-toggle-btn" id="scan-toggle-btn" type="button" aria-label="Pause photo carousel" title="Pause">
-          <svg class="scan-icon-pause" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="4" width="4" height="16" rx="1.2"/><rect x="14" y="4" width="4" height="16" rx="1.2"/></svg>
-          <svg class="scan-icon-play" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15a1 1 0 0 0 1.5.86l12.5-7.5a1 1 0 0 0 0-1.72L8.5 3.64A1 1 0 0 0 7 4.5z"/></svg>
-        </button>
-        <span class="scan-carousel-tip">
-          <span class="tip-touch"><span class="tip-phrase">Swipe to browse &middot;</span> <span class="tip-phrase">tap a photo to open it</span></span>
-          <span class="tip-mouse"><span class="tip-phrase">Drag to browse &middot;</span> <span class="tip-phrase">click a photo to open it</span></span>
-        </span>
       </div>
     </section>
   </main>

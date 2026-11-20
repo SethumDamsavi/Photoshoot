@@ -34,6 +34,8 @@
   /* Typography */
   --font-serif: 'Bodoni Moda', Garamond, Georgia, serif;
   --font-sans: 'Jost', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  /* Extra-condensed Didone for the story headline (loaded at font-stretch 62.5%) */
+  --font-condensed: 'Noto Serif Display', 'Bodoni Moda', Georgia, serif;
 
 /* Radii */
   --radius-xs: 5px;
@@ -1919,269 +1921,203 @@ input, select, textarea {
   margin-bottom: 24px;
 }
 
-/* ================= HER STORY: HOVER IMAGE SLIDER ================= */
-/* Chapter list on the left; the photo frame on the right slides vertically to the
-   hovered (or focused / tapped) chapter. Only the track's transform animates. */
+/* ================= HER STORY: EDITORIAL SPREAD ================= */
+/* A deep berry frame (the footer card's inset, width and radius). Left: a tall condensed
+   headline with the story under it. Right: a strip of photos that steps down in size from
+   the one in focus. app.js sets each photo's data-d, its distance from the photo in focus. */
 .story-celebration-section {
   position: relative;
-  padding: 56px 0 0;
-  background: transparent;
+  padding: 56px 14px 0;
 }
 
-.story-celebration-card {
-  --story-line: rgba(99, 62, 76, 0.16);
-  max-width: 1120px;
-  margin: 0 auto;
-  padding: 28px 28px 72px;
-}
-
-.story-head {
+.story-frame {
+  --story-ink: #f6e8ec;
+  --story-ink-soft: rgba(246, 232, 236, 0.74);
+  --story-accent: #f7a3bd;
+  --story-line: rgba(246, 232, 236, 0.14);
+  --story-ease: cubic-bezier(0.16, 1, 0.3, 1);
+  /* Strip height as a share of the photo column's width, so the photo in focus stays
+     about square on desktop */
+  --strip-h: 52cqi;
+  --strip-focus: 50%;
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 40px;
-  align-items: end;
+  grid-template-columns: minmax(0, 0.38fr) minmax(0, 0.62fr);
+  grid-template-areas:
+    "copy gallery"
+    "foot foot";
+  column-gap: clamp(32px, 4.4vw, 72px);
+  max-width: 1480px;
+  margin: 0 auto;
+  padding: clamp(36px, 4.4vw, 64px) clamp(24px, 4vw, 64px) clamp(28px, 3vw, 40px);
+  overflow: hidden;
+  border-radius: 28px;
+  color: var(--story-ink);
+  background-color: #1f1117;
+  background-image:
+    radial-gradient(ellipse 55% 65% at 0% 0%, rgba(222, 75, 117, 0.16) 0%, rgba(222, 75, 117, 0) 70%),
+    radial-gradient(ellipse 45% 55% at 100% 100%, rgba(163, 36, 76, 0.2) 0%, rgba(163, 36, 76, 0) 72%),
+    linear-gradient(180deg, #25131c 0%, #1a0c12 100%);
+  box-shadow: 0 30px 70px -46px rgba(45, 14, 28, 0.55), 0 10px 26px -20px rgba(45, 14, 28, 0.2);
 }
 
-.story-title-wrap {
+/* Headline at the top of the column, the story at its foot */
+.story-copy {
+  grid-area: copy;
+  container-type: inline-size;
   display: flex;
-  align-items: flex-start;
-  gap: 10px;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 28px;
+  min-width: 0;
 }
 
-/* Same scale as the gallery title, so the two section headings match at every width */
+/* Tall extra-condensed Didone, sized to its column so the name fills it ("Raveesha" is about
+   3.6em wide in this face, so 26.5cqi leaves it a little room) */
 .story-heading {
   margin: 0;
-  font-family: var(--font-serif);
-  font-size: clamp(2.75rem, 1.5rem + 3.6vw, 4.4rem);
-  font-weight: 500;
-  line-height: 0.96;
-  letter-spacing: -0.03em;
-  color: var(--ink-primary);
-}
-
-.story-title-tag {
-  margin-top: 6px;
-  font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  white-space: nowrap;
-  color: var(--pink-ink);
+  font-family: var(--font-condensed);
+  font-size: clamp(3.25rem, 26.5cqi, 10.5rem);
+  font-stretch: 62.5%;
+  font-weight: 400;
+  line-height: 0.9;
+  letter-spacing: -0.005em;
+  color: var(--story-ink);
 }
 
 .story-body-text {
+  max-width: 52ch;
   margin: 0;
-  max-width: 46ch;
   font-family: var(--font-sans);
-  font-size: 0.92rem;
-  line-height: 1.72;
-  color: var(--ink-secondary);
+  font-size: 0.95rem;
+  line-height: 1.7;
+  color: var(--story-ink-soft);
+  text-wrap: pretty;
 }
 
-.story-slider {
-  display: grid;
-  grid-template-columns: minmax(0, 0.42fr) minmax(0, 0.58fr);
-  gap: 28px;
-  align-items: stretch;
-  margin-top: 44px;
-}
-
-/* --- Chapter list --- */
-.story-slider-list {
-  display: grid;
-  grid-auto-rows: minmax(64px, 1fr);
+.story-gallery {
+  grid-area: gallery;
+  container-type: inline-size;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
   min-width: 0;
 }
 
-.story-slider-item {
-  position: relative;
-  display: grid;
-  grid-template-columns: 2.6em minmax(0, 1fr);
+/* --- The stepped strip: photos sit edge to edge, centred on one line --- */
+.story-strip {
+  display: flex;
   align-items: center;
-  gap: 10px;
-  width: 100%;
-  margin: 0;
-  padding: 0 8px 0 24px;
-  border: 0;
-  border-bottom: 1px solid var(--story-line);
-  background: transparent;
-  color: #7d5664;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-  transition: color 0.3s ease, background-color 0.3s ease;
+  justify-content: center;
+  height: clamp(240px, var(--strip-h), 560px);
 }
 
-.story-slider-item:last-child {
-  border-bottom-color: transparent;
-}
-
-/* Rose accent bar that grows in on the active chapter */
-.story-slider-item::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 14%;
-  bottom: 14%;
-  width: 3px;
-  border-radius: 3px;
-  background: var(--pink-gradient);
-  opacity: 0;
-  transform: scaleY(0.3);
-  transition: opacity 0.25s ease, transform 0.55s cubic-bezier(0.65, 0, 0.35, 1);
-}
-
-.story-slider-item.is-active {
-  color: var(--ink-primary);
-}
-
-.story-slider-item.is-active::before {
-  opacity: 1;
-  transform: scaleY(1);
-}
-
-.story-slider-item:focus-visible {
-  outline: 2px solid var(--pink-primary);
-  outline-offset: -2px;
-  border-radius: 6px;
-}
-
-.story-slider-num {
-  font-size: 0.75rem;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  font-variant-numeric: tabular-nums;
-  color: var(--pink-ink);
-}
-
-.story-slider-name {
-  font-family: var(--font-sans);
-  font-size: clamp(1.15rem, 1.9vw, 1.6rem);
-  font-weight: 500;
-  line-height: 1.08;
-  letter-spacing: -0.04em;
-  transition: transform 0.45s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.story-slider-item.is-active .story-slider-name {
-  font-weight: 700;
-  transform: translateX(4px);
-}
-
-/* --- Photo frame --- */
-.story-slider-media-wrap {
+/* Each photo's width (--w) and height (--h) step down the further it is from the photo in
+   focus; when the steps add up to more than the strip, the smaller photos give way */
+.story-strip-item {
+  --w: 22%;
+  --h: 100%;
   position: relative;
+  flex: 0 1 var(--w);
   min-width: 0;
-}
-
-.story-slider-media {
-  position: relative;
-  z-index: 1;
-  width: 100%;
-  aspect-ratio: 1.18 / 1;
-  overflow: hidden;
-  isolation: isolate;
-  border-radius: 20px;
-  background: var(--surface-subtle);
-  box-shadow: 0 28px 50px -28px rgba(45, 24, 34, 0.55), 0 6px 16px -8px rgba(45, 24, 34, 0.16);
-}
-
-.story-slider-track {
-  position: absolute;
-  inset: 0;
-  will-change: transform;
-  transition: transform 0.8s cubic-bezier(0.77, 0, 0.18, 1);
-}
-
-.story-slider-panel {
-  position: absolute;
-  left: 0;
-  width: 100%;
-  height: 100%;
+  height: var(--h);
   margin: 0;
   padding: 0;
   overflow: hidden;
   border: 0;
-  background: var(--surface-subtle);
+  background: #2b1720;
   cursor: pointer;
+  transition:
+    flex-basis 0.8s var(--story-ease),
+    flex-shrink 0.8s var(--story-ease),
+    height 0.8s var(--story-ease),
+    visibility 0s linear 0s;
   -webkit-tap-highlight-color: transparent;
 }
 
-.story-slider-img {
-  display: block;
+.story-strip-item[data-d="0"] {
+  --w: var(--strip-focus);
+  flex-shrink: 0;
+  cursor: zoom-in;
+}
+
+.story-strip-item[data-d="1"] {
+  --w: 21%;
+  --h: 86%;
+}
+
+.story-strip-item[data-d="2"] {
+  --w: 16%;
+  --h: 68%;
+}
+
+.story-strip-item[data-d="3"] {
+  --w: 9%;
+  --h: 48%;
+}
+
+.story-strip-item[data-d="4"] {
+  --w: 4%;
+  --h: 34%;
+}
+
+/* Only the portrait: it fills the strip */
+.story-strip[data-count="1"] .story-strip-item {
+  --w: 100%;
+}
+
+.story-strip-img {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transform: scale(1.08);
-  transition: transform 1.1s cubic-bezier(0.16, 1, 0.3, 1);
-  user-select: none;
-  -webkit-user-drag: none;
+  object-position: center 30%;
+  filter: saturate(0.55) brightness(0.78);
+  transform: scale(1.06);
+  transition: filter 0.6s ease, transform 1.1s var(--story-ease);
   pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-user-drag: none;
 }
 
-.story-slider-panel.is-active .story-slider-img {
-  transform: scale(1);
-}
-
-.story-slider-caption {
-  position: absolute;
-  left: 14px;
-  bottom: 14px;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 14px;
-  border-radius: var(--radius-full);
-  background: rgba(255, 255, 255, 0.94);
-  color: var(--ink-primary);
-  font-size: 0.74rem;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  box-shadow: 0 6px 16px -6px rgba(45, 24, 34, 0.3);
-  transition: transform var(--ease-natural), background-color var(--ease-natural);
+.story-strip-item[data-d="0"] .story-strip-img {
+  filter: none;
+  transform: none;
 }
 
 @media (hover: hover) and (pointer: fine) {
-  .story-slider-item:hover {
-    color: var(--ink-primary);
-  }
-
-  .story-slider-panel:hover .story-slider-caption {
-    transform: translateY(-2px);
-    background: #ffffff;
+  .story-strip-item:not([data-d="0"]):hover .story-strip-img {
+    filter: saturate(0.9) brightness(0.96);
   }
 }
 
-.story-slider-panel:focus-visible {
-  outline: none;
+.story-strip-item:focus-visible {
+  outline: 2px solid var(--story-accent);
+  outline-offset: -4px;
 }
 
-.story-slider-panel:focus-visible .story-slider-caption {
-  outline: 2px solid var(--pink-primary);
-  outline-offset: 2px;
-}
-
-/* --- Footer row: handwritten note + action --- */
+/* --- Sign-off row: handwritten note + action --- */
 .story-foot {
+  grid-area: foot;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 24px;
-  margin-top: 34px;
-  padding-top: 26px;
+  margin-top: clamp(32px, 4vw, 52px);
+  padding-top: clamp(22px, 2.6vw, 30px);
   border-top: 1px solid var(--story-line);
 }
 
 .story-handwritten-note {
   margin: 0;
   font-family: var(--font-serif);
-  font-size: clamp(1.35rem, 2.4vw, 1.85rem);
+  font-size: clamp(1.3rem, 2.2vw, 1.8rem);
   font-style: italic;
   font-weight: 500;
   line-height: 1.2;
   letter-spacing: -0.01em;
-  color: var(--ink-secondary);
+  color: var(--story-ink-soft);
   text-wrap: balance;
 }
 
@@ -2198,135 +2134,385 @@ input, select, textarea {
   letter-spacing: 0.14em;
   text-transform: uppercase;
   text-decoration: none;
-  box-shadow: 0 8px 20px -6px rgba(45, 24, 34, 0.34);
+  box-shadow: 0 10px 24px -8px rgba(0, 0, 0, 0.55);
   transition: transform var(--ease-natural), box-shadow var(--ease-natural);
 }
 
 @media (hover: hover) {
   .story-read-btn:hover {
     transform: translateY(-2px);
-    box-shadow: 0 12px 24px -6px rgba(45, 24, 34, 0.42);
+    box-shadow: 0 14px 28px -8px rgba(0, 0, 0, 0.62);
   }
 }
 
 .story-read-btn:focus-visible {
-  outline: 2px solid var(--pink-ink);
+  outline: 2px solid var(--story-accent);
   outline-offset: 3px;
 }
 
-/* Responsive for Story Section */
-@media (max-width: 960px) {
-  .story-celebration-card {
-    padding: 20px 24px 56px;
+/* Tablets and phones: headline and story on top, the strip full width under them */
+@media (max-width: 900px) {
+  .story-frame {
+    --strip-h: 70cqi;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "copy"
+      "gallery"
+      "foot";
+    row-gap: 32px;
+    border-radius: 24px;
   }
 
-  .story-head {
-    grid-template-columns: 1fr;
-    gap: 16px;
+  .story-copy {
+    gap: 18px;
   }
 
-  /* Once the intro sits under the heading, it reads at body size like the other intros */
+  .story-heading {
+    font-size: clamp(3rem, 17cqi, 8.5rem);
+  }
+
   .story-body-text {
     font-size: 1rem;
     line-height: 1.65;
   }
-}
 
-@media (max-width: 700px) {
-  .story-celebration-card {
-    padding: 12px 18px 48px;
-  }
-
-  /* Heading and intro centred on phones, the intro's lines evened out */
-  .story-head {
-    text-align: center;
-  }
-
-  .story-title-wrap {
-    justify-content: center;
-  }
-
-  .story-body-text {
-    margin-inline: auto;
-    text-wrap: balance;
-  }
-
-  .story-slider {
-    grid-template-columns: 1fr;
-    gap: 18px;
-    margin-top: 28px;
-  }
-
-  /* Photo first on phones, chapters underneath as a tappable list */
-  .story-slider-media-wrap {
-    order: -1;
-  }
-
-  .story-slider-list {
-    grid-auto-rows: 56px;
-  }
-
-  .story-slider-item {
-    padding-left: 20px;
-  }
-
-  .story-slider-name {
-    font-size: 1.3rem;
-  }
-
-  .story-slider-media {
-    border-radius: 16px;
-  }
-
-  /* The thank-you note and its button, centred one above the other */
   .story-foot {
-    flex-direction: column;
-    align-items: center;
-    gap: 18px;
-    text-align: center;
+    margin-top: 0;
   }
 }
 
-/* Small phones: the same 14px side margin as the gallery above, and a heading that keeps
-   "Hi, I'm Raveesha" on one line down to 280px wide */
-@media (max-width: 480px) {
-  .story-celebration-card {
-    padding-right: 14px;
-    padding-left: 14px;
+/* Phones: headline, story and sign-off centred; the photo in focus takes a bit more of the
+   strip and the steps tighten so all five photos fit */
+@media (max-width: 700px) {
+  .story-celebration-section {
+    padding-top: 40px;
+  }
+
+  .story-frame {
+    --strip-h: 84cqi;
+    --strip-focus: 56%;
+    padding: 32px 18px 28px;
+    row-gap: 28px;
+  }
+
+  .story-copy {
+    align-items: center;
+    text-align: center;
   }
 
   .story-heading {
-    font-size: clamp(2rem, 12vw, 3.4rem);
+    font-size: clamp(2.75rem, 26cqi, 7rem);
+  }
+
+  .story-body-text {
+    text-wrap: balance;
+  }
+
+  /* All five photos fit: tighter steps that add up to the full strip */
+  .story-strip-item[data-d="1"] {
+    --w: 19%;
+  }
+
+  .story-strip-item[data-d="2"] {
+    --w: 13%;
+  }
+
+  .story-strip-item[data-d="3"] {
+    --w: 8%;
+  }
+
+  .story-strip-item[data-d="4"] {
+    --w: 4%;
+  }
+
+  .story-foot {
+    flex-direction: column;
+    gap: 18px;
+    text-align: center;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .story-slider-track,
-  .story-slider-img,
-  .story-slider-item,
-  .story-slider-item::before,
-  .story-slider-name {
+  .story-strip-item,
+  .story-strip-img {
     transition-duration: 0.01ms !important;
+    transition-delay: 0s !important;
   }
 }
 
-/* ================= HIGHLIGHT SHOWCASE: SCAN CAROUSEL ================= */
-.scan-carousel-section[hidden] {
+/* ================= PHOTO REEL: 3D CAROUSEL ================= */
+/* A full-screen porcelain frame (the footer card's inset, width and radius) lit by a peony
+   glow and a berry glow, with a faint grid and a white floor glow. The photos stand in 3D
+   space: the one in front is sharp and full size; its neighbours step back, turn in toward
+   it and soften, and the next ones fade out. app.js sets each card's data-pos (-3 to 3). */
+.reel-section[hidden] {
   display: none;
 }
 
-.showcase-eyebrow {
-  margin-bottom: 12px;
-  font-family: var(--font-sans);
-  font-size: 0.72rem;
-  font-weight: 600;
-  letter-spacing: 0.3em;
-  text-transform: uppercase;
-  color: var(--pink-deep);
+.reel-section {
+  --reel-ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --reel-move: 0.95s;
+  --reel-gutter: 14px;
+  /* Cards are as large as the screen height allows once the heading fits */
+  --card-w: clamp(196px, min(calc((76svh - 160px) * 0.75), 30vw), 420px);
+  --card-h: calc(var(--card-w) * 4 / 3);
+  --card-r: clamp(20px, 1.9vw, 28px);
+  padding: var(--reel-gutter);
 }
 
-.scan-card-img {
+.reel-frame {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(22px, 3.2vh, 32px);
+  max-width: 1480px;
+  margin: 0 auto;
+  /* Even room above the title and below the photos. The frame is as tall as its content; the
+     cards are sized from the screen height, so it still fills a laptop screen without leaving
+     a gap above the title on phones and tablets */
+  padding: clamp(36px, 6vh, 64px) clamp(16px, 4vw, 56px) clamp(32px, 5vh, 56px);
+  overflow: hidden;
+  border: 1px solid rgba(163, 36, 76, 0.12);
+  border-radius: 28px;
+  background-color: #fff7f9;
+  background-image:
+    radial-gradient(ellipse 54% 48% at 4% 0%, rgba(240, 98, 138, 0.24) 0%, rgba(240, 98, 138, 0) 72%),
+    radial-gradient(ellipse 50% 46% at 97% 3%, rgba(184, 38, 82, 0.16) 0%, rgba(184, 38, 82, 0) 72%),
+    radial-gradient(ellipse 64% 30% at 50% 100%, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0) 74%),
+    linear-gradient(180deg, #fff9fb 0%, #fdf0f5 100%);
+  box-shadow: 0 30px 70px -46px rgba(45, 14, 28, 0.42), 0 10px 26px -20px rgba(45, 14, 28, 0.18);
+}
+
+/* Faint square grid that fades out toward the frame's edges */
+.reel-frame::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background-image:
+    linear-gradient(rgba(143, 29, 65, 0.055) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(143, 29, 65, 0.055) 1px, transparent 1px);
+  background-position: center center;
+  background-size: 46px 46px;
+  -webkit-mask-image: radial-gradient(ellipse 72% 64% at 50% 40%, #000 0%, rgba(0, 0, 0, 0.5) 55%, transparent 100%);
+  mask-image: radial-gradient(ellipse 72% 64% at 50% 40%, #000 0%, rgba(0, 0, 0, 0.5) 55%, transparent 100%);
+  pointer-events: none;
+}
+
+.reel-head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 50rem;
+  text-align: center;
+}
+
+/* Two lines: berry ink, then an italic peony-to-berry gradient (the same upright + italic
+   serif pairing as the other section titles, at display size) */
+.reel-title {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-size: clamp(2.5rem, min(5.6vw, 7.2vh), 5.5rem);
+  font-weight: 500;
+  line-height: 1.02;
+  letter-spacing: -0.03em;
+  color: var(--ink-primary);
+}
+
+.reel-title-line {
   display: block;
+}
+
+/* Inline-block so the gradient spans the words only; the padding keeps the italic overhang
+   and the descenders inside the clipped background */
+.reel-title-accent {
+  display: inline-block;
+  margin: 0 -0.12em -0.1em;
+  padding: 0 0.12em 0.1em;
+  font-style: italic;
+  letter-spacing: -0.02em;
+  color: var(--pink-ink);
+  background-image: linear-gradient(100deg, #e65a85 0%, #cf3a68 38%, #a3244c 72%, #8f1d41 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.reel-intro {
+  max-width: 34rem;
+  margin: clamp(12px, 1.8vh, 18px) 0 0;
+  font-size: 1.0625rem;
+  line-height: 1.6;
+  color: var(--ink-secondary);
+  text-wrap: balance;
+}
+
+/* The stage spans the frame; photos move by autoplay, swipe or drag, a tap on a side photo,
+   or the arrow keys */
+.reel {
+  position: relative;
+  width: 100%;
+  max-width: 1320px;
+}
+
+.reel-stage {
+  position: relative;
+  height: var(--card-h);
+  cursor: grab;
+  touch-action: pan-y;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.reel-stage.is-dragging {
+  cursor: grabbing;
+}
+
+/* The track holds the perspective, so every card shares one vanishing point; a drag pulls
+   it along with the pointer */
+.reel-track {
+  position: absolute;
+  inset: 0;
+  perspective: 1600px;
+  transform: translate3d(var(--drag, 0px), 0, 0);
+  transition: transform 0.6s var(--reel-ease);
+}
+
+.reel-stage.is-dragging .reel-track {
+  transition: none;
+}
+
+/* Front card: sharp, full size, nearest, on top, a touch brighter */
+.reel-card {
+  --x: 0px;
+  --z: 0px;
+  --ry: 0deg;
+  --s: 1;
+  --o: 1;
+  --blur: 0px;
+  --bright: 1.03;
+  position: absolute;
+  top: 0;
+  left: 50%;
+  z-index: 5;
+  width: var(--card-w);
+  height: var(--card-h);
+  margin-left: calc(var(--card-w) / -2);
+  opacity: var(--o);
+  filter: blur(var(--blur)) brightness(var(--bright));
+  transform: translate3d(var(--x), 0, var(--z)) rotateY(var(--ry)) scale(var(--s));
+  transition:
+    transform var(--reel-move) var(--reel-ease),
+    opacity calc(var(--reel-move) * 0.8) var(--reel-ease),
+    filter calc(var(--reel-move) * 0.8) var(--reel-ease),
+    visibility 0s linear 0s;
+  will-change: transform, opacity, filter;
+}
+
+/* Neighbours: a step back, turned gently in toward the front card, a little soft */
+.reel-card[data-pos="-1"],
+.reel-card[data-pos="1"] {
+  --z: -150px;
+  --s: 0.86;
+  --o: 0.8;
+  --blur: 1.5px;
+  --bright: 0.94;
+  z-index: 4;
+}
+
+.reel-card[data-pos="-1"] {
+  --x: calc(var(--card-w) * -0.74);
+  --ry: 16deg;
+}
+
+.reel-card[data-pos="1"] {
+  --x: calc(var(--card-w) * 0.74);
+  --ry: -16deg;
+}
+
+.reel-card[data-pos="-2"],
+.reel-card[data-pos="2"] {
+  --z: -320px;
+  --s: 0.72;
+  --o: 0.42;
+  --blur: 4px;
+  --bright: 0.9;
+  z-index: 3;
+}
+
+.reel-card[data-pos="-2"] {
+  --x: calc(var(--card-w) * -1.42);
+  --ry: 24deg;
+}
+
+.reel-card[data-pos="2"] {
+  --x: calc(var(--card-w) * 1.42);
+  --ry: -24deg;
+}
+
+/* Staging spots off each side: fully hidden, so cards arrive from and leave to them */
+.reel-card[data-pos="-3"],
+.reel-card[data-pos="3"] {
+  --z: -480px;
+  --s: 0.6;
+  --o: 0;
+  --blur: 8px;
+  --bright: 0.9;
+  z-index: 1;
+  visibility: hidden;
+  pointer-events: none;
+  transition-delay: 0s, 0s, 0s, var(--reel-move);
+}
+
+.reel-card[data-pos="-3"] {
+  --x: calc(var(--card-w) * -1.95);
+  --ry: 30deg;
+}
+
+.reel-card[data-pos="3"] {
+  --x: calc(var(--card-w) * 1.95);
+  --ry: -30deg;
+}
+
+.reel-card-btn {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: var(--card-r);
+  background: var(--surface-warm);
+  cursor: pointer;
+  box-shadow: 0 46px 70px -36px rgba(45, 14, 28, 0.58), 0 18px 34px -22px rgba(45, 14, 28, 0.34);
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Thin light border and a soft highlight along the top edge */
+.reel-card-btn::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  border-radius: inherit;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.16) 0%, rgba(255, 255, 255, 0) 24%);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  pointer-events: none;
+}
+
+.reel-card-btn:focus-visible {
+  outline: 2px solid var(--pink-primary);
+  outline-offset: 4px;
+}
+
+.reel-card-img {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -2336,261 +2522,179 @@ input, select, textarea {
   -webkit-user-drag: none;
 }
 
-/* --- Scan carousel: photos glide through a rose "developing" light --- */
-.scan-carousel-section {
-  position: relative;
-  padding: 40px 0 88px;
-}
-
-.scan-carousel-head {
-  margin-bottom: 14px;
-  padding: 0 20px;
-  text-align: center;
-}
-
-.scan-carousel-title {
-  font-family: var(--font-serif);
-  font-size: clamp(1.8rem, 3.6vw, 3rem);
-  font-weight: 500;
-  line-height: 1.08;
-  color: var(--ink-primary);
-  text-wrap: balance;
-}
-
-.scan-carousel-title em {
-  font-style: italic;
-  color: var(--pink-deep);
-}
-
-.scan-carousel-viewport {
-  --scan-card-w: clamp(140px, 16vw, 224px);
-  position: relative;
-  height: calc(var(--scan-card-w) * 1.8 + 48px);
-  overflow: hidden;
-  cursor: grab;
-  touch-action: pan-y;
-  user-select: none;
-  -webkit-user-select: none;
-  background:
-    radial-gradient(ellipse 28% 72% at 50% 50%, rgba(240, 98, 138, 0.16) 0%, rgba(240, 98, 138, 0) 70%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.55) 50%, rgba(255, 255, 255, 0) 100%);
-  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 7%, #000 93%, transparent 100%);
-  mask-image: linear-gradient(90deg, transparent 0, #000 7%, #000 93%, transparent 100%);
-}
-
-.scan-carousel-viewport.is-dragging,
-.scan-carousel-viewport.is-dragging .scan-card {
-  cursor: grabbing;
-}
-
-.scan-carousel-track {
-  position: absolute;
-  inset: 0;
-}
-
-.scan-card {
-  position: absolute;
-  left: 0;
-  top: 50%;
-  width: var(--scan-card-w);
-  aspect-ratio: 1 / 1.45;
-  padding: 0;
-  border: 0;
-  border-radius: 18px;
-  background: none;
-  cursor: pointer;
-  will-change: transform;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.scan-card-frame {
-  position: relative;
-  display: block;
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.9);
-  border-radius: inherit;
-  background: var(--surface-subtle);
-  box-shadow: 0 18px 36px -16px rgba(45, 24, 34, 0.42), 0 3px 10px rgba(45, 24, 34, 0.08);
-}
-
-.scan-card-img {
-  position: absolute;
-  inset: 0;
-}
-
-/* Developed (colour) side: a clipping window slid in by JS with transforms only,
-   so the scan line never forces a repaint. */
-.scan-card-reveal {
+/* Berry-dark floor so the white label and number read on any photo */
+.reel-card-shade {
   position: absolute;
   inset: 0;
   z-index: 1;
-  overflow: hidden;
-  will-change: transform;
-}
-
-.scan-card-color {
-  will-change: transform;
-}
-
-/* Undeveloped side: a soft rose-toned monochrome */
-.scan-card-mono {
-  filter: grayscale(1) sepia(0.22) hue-rotate(295deg) saturate(1.35) contrast(1.04) brightness(1.04);
-}
-
-.scan-card:focus-visible {
-  outline: none;
-}
-
-.scan-card:focus-visible .scan-card-frame {
-  border-color: var(--pink-primary);
-  box-shadow: 0 0 0 3px #ffffff, 0 0 0 5px var(--pink-primary), 0 18px 36px -16px rgba(45, 24, 34, 0.42);
-}
-
-.scan-beam {
-  position: absolute;
-  top: 7%;
-  bottom: 7%;
-  left: 50%;
-  z-index: 3;
-  width: 0;
+  background: linear-gradient(180deg, rgba(36, 9, 22, 0) 50%, rgba(36, 9, 22, 0.32) 72%, rgba(36, 9, 22, 0.8) 100%);
   pointer-events: none;
 }
 
-.scan-beam-core {
+/* A soft light streak that now and then crosses the front photo (app.js adds .is-shining) */
+.reel-card-shine {
   position: absolute;
-  top: 0;
-  bottom: 0;
-  left: -1.5px;
-  width: 3px;
-  border-radius: 3px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0) 0%, #ffffff 14%, #ffffff 86%, rgba(255, 255, 255, 0) 100%);
-  filter: drop-shadow(0 0 3px #ffffff) drop-shadow(0 0 8px rgba(240, 98, 138, 0.95)) drop-shadow(0 0 20px rgba(222, 75, 117, 0.6));
+  inset: 0;
+  z-index: 2;
+  overflow: hidden;
+  border-radius: inherit;
+  pointer-events: none;
 }
 
-.scan-beam-halo {
+.reel-card-shine::before {
+  content: '';
   position: absolute;
-  top: 50%;
+  top: -25%;
+  bottom: -25%;
   left: 0;
-  width: 220px;
-  height: 112%;
-  transform: translate(-50%, -50%);
-  background: radial-gradient(ellipse at center, rgba(240, 98, 138, 0.28) 0%, rgba(240, 98, 138, 0.1) 40%, rgba(240, 98, 138, 0) 70%);
-  animation: scanBreathe 3.4s ease-in-out infinite;
+  width: 46%;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.1) 32%, rgba(255, 255, 255, 0.34) 50%, rgba(255, 255, 255, 0.1) 68%, rgba(255, 255, 255, 0) 100%);
+  opacity: 0;
+  transform: translateX(-130%) rotate(14deg);
 }
 
-@keyframes scanBreathe {
-  0%, 100% { opacity: 0.7; transform: translate(-50%, -50%) scaleX(0.88); }
-  50% { opacity: 1; transform: translate(-50%, -50%) scaleX(1.1); }
+.reel-card[data-pos="0"].is-shining .reel-card-shine::before {
+  animation: reelShine 1.3s cubic-bezier(0.45, 0.05, 0.3, 1) both;
 }
 
-.scan-carousel-controls {
+@keyframes reelShine {
+  0% {
+    opacity: 0;
+    transform: translateX(-130%) rotate(14deg);
+  }
+
+  18%,
+  82% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateX(290%) rotate(14deg);
+  }
+}
+
+/* Album label bottom left, number badge bottom right: they rise in on the front card only */
+.reel-card-meta {
+  position: absolute;
+  right: clamp(14px, 1.4vw, 20px);
+  bottom: clamp(14px, 1.4vw, 20px);
+  left: clamp(16px, 1.6vw, 22px);
+  z-index: 4;
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 14px;
-  margin-top: 18px;
-  padding: 0 20px;
+  justify-content: space-between;
+  gap: 12px;
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity 0.35s ease, transform 0.5s var(--reel-ease);
+  pointer-events: none;
 }
 
-.scan-toggle-btn {
+.reel-card[data-pos="0"] .reel-card-meta {
+  opacity: 1;
+  transform: none;
+  transition-delay: 0.3s;
+}
+
+.reel-card-label {
+  min-width: 0;
+  overflow: hidden;
+  font-family: var(--font-sans);
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: 0.18em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: #ffffff;
+  text-shadow: 0 1px 10px rgba(36, 9, 22, 0.45);
+}
+
+.reel-card-num {
   display: grid;
-  place-items: center;
   flex: 0 0 auto;
+  place-items: center;
   width: 40px;
   height: 40px;
-  border: 1px solid var(--border-medium);
+  border: 1px solid rgba(255, 255, 255, 0.45);
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.92);
-  color: var(--pink-deep);
-  cursor: pointer;
-  box-shadow: var(--shadow-card);
-  transition: transform var(--ease-natural), box-shadow var(--ease-natural), background-color var(--ease-natural);
+  background: rgba(255, 255, 255, 0.16);
+  -webkit-backdrop-filter: blur(10px) saturate(150%);
+  backdrop-filter: blur(10px) saturate(150%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  font-family: var(--font-sans);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
+  color: #ffffff;
 }
 
-@media (hover: hover) {
-  .scan-toggle-btn:hover {
-    background: #ffffff;
-    box-shadow: var(--shadow-hover);
-    transform: scale(1.06);
+/* One photo: nothing to browse */
+.reel.is-single .reel-stage {
+  cursor: default;
+}
+
+/* Tablets: wider cards relative to the screen */
+@media (max-width: 900px) {
+  .reel-section {
+    --card-w: clamp(196px, min(calc((85svh - 264px) * 0.75), 50vw), 380px);
   }
 }
 
-.scan-toggle-btn:active {
-  transform: scale(0.94);
-}
-
-.scan-toggle-btn:focus-visible {
-  outline: 2px solid var(--pink-primary);
-  outline-offset: 3px;
-}
-
-.scan-icon-play {
-  display: none;
-  margin-left: 2px;
-}
-
-.scan-toggle-btn.is-paused .scan-icon-play {
-  display: block;
-}
-
-.scan-toggle-btn.is-paused .scan-icon-pause {
-  display: none;
-}
-
-.scan-carousel-tip {
-  font-size: 0.8rem;
-  letter-spacing: 0.02em;
-  color: var(--ink-secondary);
-}
-
-/* One hint per device: swipe / tap on touch screens, drag / click with a mouse. When the hint
-   wraps, it breaks at the dot rather than mid-phrase. */
-.tip-mouse {
-  display: none;
-}
-
-.tip-phrase {
-  white-space: nowrap;
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .tip-touch {
-    display: none;
-  }
-
-  .tip-mouse {
-    display: inline;
-  }
-}
-
+/* Phones: a larger front photo, and only its nearest neighbours show */
 @media (max-width: 640px) {
-  .showcase-eyebrow {
-    margin-bottom: 8px;
-    font-size: 0.7rem;
-    letter-spacing: 0.26em;
+  .reel-section {
+    --card-w: clamp(188px, min(calc((100svh - 350px) * 0.75), 70vw), 320px);
+    --card-r: 20px;
   }
 
-  .scan-carousel-section {
-    padding: 24px 0 64px;
+  .reel-frame {
+    gap: 22px;
+    padding: 36px 16px 28px;
   }
 
-  .scan-card {
-    border-radius: 14px;
+  .reel-title {
+    font-size: clamp(2.2rem, 11vw, 3.2rem);
   }
 
-  .scan-beam-halo {
-    width: 150px;
+  .reel-intro {
+    font-size: 1rem;
+    line-height: 1.65;
   }
+
+  .reel-card[data-pos="-1"] {
+    --x: calc(var(--card-w) * -0.72);
+  }
+
+  .reel-card[data-pos="1"] {
+    --x: calc(var(--card-w) * 0.72);
+  }
+
+  .reel-card[data-pos="-2"],
+  .reel-card[data-pos="2"] {
+    --o: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition-delay: 0s, 0s, 0s, var(--reel-move);
+  }
+
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .scan-beam-halo {
-    animation: none;
+  .reel-section {
+    --reel-move: 0.01ms;
   }
 
-  .scan-spark {
+  .reel-track,
+  .reel-card-meta {
+    transition-duration: 0.01ms !important;
+    transition-delay: 0s !important;
+  }
+
+  .reel-card-shine {
     display: none;
   }
 }
@@ -3967,11 +4071,6 @@ input, select, textarea {
     height: 44px;
   }
 
-  .scan-toggle-btn {
-    width: 44px;
-    height: 44px;
-  }
-
   .lb-tool-btn {
     width: 44px;
     height: 44px;
@@ -4144,24 +4243,11 @@ input, select, textarea {
     font-size: 0.75rem;
   }
 
-  .showcase-eyebrow {
-    font-size: 0.75rem;
-    letter-spacing: 0.22em;
-  }
-
-  .story-slider-caption {
-    font-size: 0.8125rem;
-  }
-
   .story-read-btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     min-height: 48px;
-    font-size: 0.8125rem;
-  }
-
-  .scan-carousel-tip {
     font-size: 0.8125rem;
   }
 

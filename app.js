@@ -1038,15 +1038,15 @@ function setupEventListeners() {
   setupLightboxEvents();
 }
 
-// ================= HIGHLIGHT SHOWCASE: SCAN CAROUSEL =================
-// A rose light line "develops" each gliding photo from monochrome to full colour.
+// ================= HIGHLIGHT SHOWCASE: PHOTO REEL =================
+// A 3D carousel: the photo in front is sharp and full size, its neighbours step back.
 const reducedMotionQuery = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : null;
 const finePointerQuery = window.matchMedia ? window.matchMedia('(hover: hover) and (pointer: fine)') : null;
 const prefersReducedMotion = () => Boolean(reducedMotionQuery && reducedMotionQuery.matches);
 const hasFinePointer = () => Boolean(finePointerQuery && finePointerQuery.matches);
 const wrapMod = (v, m) => ((v % m) + m) % m;
 
-let scanCarouselController = null;
+let reelController = null;
 const showcaseSrcCache = new Map();
 
 function openLightboxForPhotoId(photoId) {
@@ -1092,23 +1092,12 @@ function getShowcasePhotos() {
     .filter(p => p && p.published !== false)
     .map(photo => ({
       id: photo.id,
-      name: photo.name || '21st birthday moment',
+      // Title and album are optional in Studio Admin, so either can be blank
+      title: typeof photo.name === 'string' ? photo.name.trim() : '',
+      album: typeof photo.category === 'string' ? photo.category.trim() : '',
+      desc: typeof photo.shortDescription === 'string' ? photo.shortDescription.trim() : '',
       rawSrc: photo.image || (photo.images && photo.images[0]?.src) || '/assets/portrait.jpg'
     }));
-}
-
-// Repeats exist only to fill the layout; they stay out of the tab order and screen reader output.
-function createShowcaseCard(photo, className, isRepeat) {
-  const card = document.createElement('button');
-  card.type = 'button';
-  card.className = className;
-  if (isRepeat) {
-    card.tabIndex = -1;
-    card.setAttribute('aria-hidden', 'true');
-  } else {
-    card.setAttribute('aria-label', `Open photo: ${photo.name}`);
-  }
-  return card;
 }
 
 function createShowcaseImage(src, className) {
@@ -1122,8 +1111,8 @@ function createShowcaseImage(src, className) {
 }
 
 function renderHighlightReel() {
-  if (scanCarouselController) scanCarouselController.destroy();
-  if (storySliderController) storySliderController.destroy();
+  if (reelController) reelController.destroy();
+  if (storyStripController) storyStripController.destroy();
 
   const photos = getShowcasePhotos();
   const liveSources = new Set(photos.map(p => p.rawSrc));
@@ -1136,8 +1125,8 @@ function renderHighlightReel() {
   photos.forEach(p => { p.src = getShowcaseSrc(p.rawSrc); });
 
   renderHeroMoments(photos);
-  scanCarouselController = createScanCarousel(photos);
-  storySliderController = createStorySlider();
+  reelController = createPhotoReel(photos);
+  storyStripController = createStoryStrip();
 }
 
 // Hero frame's gallery rail: three thumbnails (featured photos first) plus the photo and album
@@ -1165,12 +1154,16 @@ function renderHeroMoments(photos) {
   labelEl.textContent = albumCount > 1 ? `${noun} · ${albumCount} albums` : `${noun} in the gallery`;
 }
 
-// ---------- Her Story: hover image slider ----------
-// Chapter rows on the left; hovering (mouse), focusing (keyboard) or tapping (touch) a row
-// slides the photo frame to that chapter. Row 01 + its panel (the admin-set story portrait)
-// live in index.html so settings can update them any time; album rows are added here.
-let storySliderController = null;
-let storySliderActive = 0;
+// ---------- Her story: stepped photo strip ----------
+// The photo in focus is large; the others step down in size the further they are from it
+// (CSS reads each photo's data-d). Tapping a smaller photo brings it into focus; tapping the
+// photo in focus opens it: the portrait or a photo in the lightbox, an album in the gallery.
+// Photo 01 (the admin-set story portrait) lives in index.html; album covers come next, then
+// photos (featured first) until the strip holds five, repeating photos only when there are
+// fewer than five different ones.
+const STORY_STRIP_MAX = 5;
+let storyStripController = null;
+let storyStripActive = 0;
 
 function getStoryAlbums() {
   const albums = new Map();
@@ -1197,342 +1190,498 @@ function showAlbumInGallery(slug) {
   if (target) target.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'start' });
 }
 
-function createStorySlider() {
-  const list = document.getElementById('story-slider-list');
-  const media = document.getElementById('story-slider-media');
-  const track = document.getElementById('story-slider-track');
-  if (!list || !media || !track) return null;
-
-  list.querySelectorAll('[data-album]').forEach(el => el.remove());
-  track.querySelectorAll('[data-album]').forEach(el => el.remove());
-
-  getStoryAlbums().forEach((album, i) => {
-    const index = i + 1;
-    const item = document.createElement('button');
-    item.type = 'button';
-    item.className = 'story-slider-item';
-    item.id = `story-tab-${index}`;
-    item.setAttribute('role', 'tab');
-    item.setAttribute('aria-controls', 'story-slider-media');
-    item.dataset.index = String(index);
-    item.dataset.album = album.slug;
-    item.innerHTML = `<span class="story-slider-num">(${String(index + 1).padStart(2, '0')})</span><span class="story-slider-name">${escapeHtml(album.name)}</span>`;
-    list.appendChild(item);
-
-    const panel = document.createElement('button');
-    panel.type = 'button';
-    panel.className = 'story-slider-panel';
-    panel.dataset.index = String(index);
-    panel.dataset.album = album.slug;
-    panel.setAttribute('aria-label', `View the ${album.name} album`);
-    const caption = document.createElement('span');
-    caption.className = 'story-slider-caption';
-    caption.innerHTML = `${album.count} ${album.count === 1 ? 'photo' : 'photos'} &middot; View album <span aria-hidden="true">&rarr;</span>`;
-    panel.append(createShowcaseImage(getShowcaseSrc(album.cover.image), 'story-slider-img'), caption);
-    track.appendChild(panel);
+function getStoryStripEntries() {
+  const portrait = document.getElementById('story-polaroid-img');
+  const portraitSrc = portrait ? portrait.getAttribute('src') : '';
+  const entries = [];
+  const used = new Set();
+  getStoryAlbums().forEach(album => {
+    entries.push({ kind: 'album', slug: album.slug, name: album.name, count: album.count, src: album.cover.image });
+    used.add(album.cover.id);
   });
+  const want = STORY_STRIP_MAX - 1;
+  const photos = products
+    .filter(p => p && p.published !== false && p.image && !used.has(p.id))
+    .sort((a, b) => Number(Boolean(b.featured)) - Number(Boolean(a.featured)));
+  const toEntry = (p) => ({ kind: 'photo', id: p.id, name: p.name || p.category || 'Birthday moment', src: p.image });
 
-  const items = [...list.querySelectorAll('.story-slider-item')];
-  const panels = [...track.querySelectorAll('.story-slider-panel')];
-  panels.forEach((panel, i) => { panel.style.top = `${i * 100}%`; });
-  let active = -1;
-
-  function setActive(index) {
-    const next = Math.max(0, Math.min(items.length - 1, index));
-    if (next === active) return;
-    active = next;
-    storySliderActive = next;
-    track.style.transform = `translate3d(0, ${-next * 100}%, 0)`;
-    items.forEach((item, i) => {
-      const on = i === next;
-      item.classList.toggle('is-active', on);
-      item.setAttribute('aria-selected', String(on));
-      item.tabIndex = on ? 0 : -1;
-    });
-    panels.forEach((panel, i) => {
-      const on = i === next;
-      panel.classList.toggle('is-active', on);
-      panel.inert = !on;
-    });
-    media.setAttribute('aria-labelledby', items[next].id);
+  // Photos fill the rest, featured first: different images before any repeats
+  const seenImages = new Set([portraitSrc, ...entries.map(entry => entry.src)]);
+  for (const p of photos) {
+    if (entries.length >= want) break;
+    if (seenImages.has(p.image)) continue;
+    seenImages.add(p.image);
+    entries.push(toEntry(p));
   }
 
-  const itemFrom = (e) => {
-    const item = e.target.closest('.story-slider-item');
-    return item && list.contains(item) ? item : null;
-  };
-  const onPointerOver = (e) => {
-    if (e.pointerType !== 'mouse') return;
-    const item = itemFrom(e);
-    if (item) setActive(Number(item.dataset.index));
-  };
-  const onActivate = (e) => {
-    const item = itemFrom(e);
-    if (item) setActive(Number(item.dataset.index));
-  };
-  const onKeyDown = (e) => {
-    const step = { ArrowDown: 1, ArrowRight: 1, ArrowUp: -1, ArrowLeft: -1 }[e.key];
-    let next = null;
-    if (step) next = (active + step + items.length) % items.length;
-    else if (e.key === 'Home') next = 0;
-    else if (e.key === 'End') next = items.length - 1;
-    if (next === null) return;
-    e.preventDefault();
-    items[next].focus();
-  };
-  const onPanelClick = (e) => {
-    const panel = e.target.closest('.story-slider-panel');
-    if (!panel) return;
-    if (panel.dataset.album) {
-      showAlbumInGallery(panel.dataset.album);
+  // Fewer different photos than slots: the strip still shows five, cycling through the
+  // different images (the portrait's included) and never putting the same image side by
+  // side unless there is only one
+  if (entries.length < want) {
+    const pool = [];
+    const pooled = new Set();
+    photos.forEach(p => {
+      if (pooled.has(p.image)) return;
+      pooled.add(p.image);
+      pool.push(p);
+    });
+    let prevSrc = entries.length ? entries[entries.length - 1].src : portraitSrc;
+    for (let k = 0; pool.length && entries.length < want; k++) {
+      let p = pool[k % pool.length];
+      if (pool.length > 1 && p.image === prevSrc) p = pool[++k % pool.length];
+      entries.push(toEntry(p));
+      prevSrc = p.image;
+    }
+  }
+  return entries.slice(0, want);
+}
+
+function createStoryStrip() {
+  const strip = document.getElementById('story-strip');
+  const portraitItem = strip ? strip.querySelector('[data-kind="portrait"]') : null;
+  if (!strip || !portraitItem) return null;
+
+  strip.querySelectorAll('[data-added]').forEach(el => el.remove());
+  const entries = [{ kind: 'portrait', name: 'The Birthday Girl', el: portraitItem }];
+  getStoryStripEntries().forEach(entry => {
+    const item = document.createElement('button');
+    item.type = 'button';
+    item.className = 'story-strip-item';
+    item.dataset.added = 'true';
+    item.dataset.kind = entry.kind;
+    item.appendChild(createShowcaseImage(getShowcaseSrc(entry.src), 'story-strip-img'));
+    strip.appendChild(item);
+    entries.push({ ...entry, el: item });
+  });
+  strip.dataset.count = String(entries.length);
+
+  const actionText = (entry) => (entry.kind === 'album' ? 'View album' : entry.kind === 'portrait' ? 'Open portrait' : 'Open photo');
+
+  let active = -1;
+  function setActive(index) {
+    const next = Math.max(0, Math.min(entries.length - 1, index));
+    if (next === active) return;
+    active = next;
+    storyStripActive = next;
+    entries.forEach((entry, i) => {
+      const on = i === next;
+      entry.el.dataset.d = String(Math.min(Math.abs(i - next), 4));
+      entry.el.tabIndex = on ? 0 : -1;
+      if (on) entry.el.setAttribute('aria-current', 'true');
+      else entry.el.removeAttribute('aria-current');
+      entry.el.setAttribute('aria-label', on ? `${actionText(entry)}: ${entry.name}` : `Show ${entry.name}`);
+    });
+  }
+
+  function openEntry(entry) {
+    if (entry.kind === 'album') {
+      showAlbumInGallery(entry.slug);
       return;
     }
-    // Story portrait: open it in the lightbox when it is one of the archive photos.
+    if (entry.kind === 'photo') {
+      openLightboxForPhotoId(entry.id);
+      return;
+    }
+    // The story portrait: open it in the lightbox when it is one of the archive photos
     const storyImg = document.getElementById('story-polaroid-img');
     const src = storyImg ? storyImg.getAttribute('src') : '';
     const match = products.find(p => p.published !== false && p.image === src);
     if (match) openLightboxForPhotoId(match.id); else openLightbox(0);
+  }
+
+  const onClick = (e) => {
+    const item = e.target.closest('.story-strip-item');
+    if (!item || !strip.contains(item)) return;
+    const index = entries.findIndex(entry => entry.el === item);
+    if (index < 0) return;
+    if (index === active) openEntry(entries[index]);
+    else setActive(index);
+  };
+  // Arrow keys move the focus along the strip (and bring that photo into focus)
+  const onKeyDown = (e) => {
+    if (!e.target.closest('.story-strip-item')) return;
+    const step = { ArrowRight: 1, ArrowLeft: -1 }[e.key];
+    let next = null;
+    if (step) next = (active + step + entries.length) % entries.length;
+    else if (e.key === 'Home') next = 0;
+    else if (e.key === 'End') next = entries.length - 1;
+    if (next === null) return;
+    e.preventDefault();
+    setActive(next);
+    entries[next].el.focus();
   };
 
-  setActive(Math.min(storySliderActive, items.length - 1));
-  list.addEventListener('pointerover', onPointerOver);
-  list.addEventListener('focusin', onActivate);
-  list.addEventListener('click', onActivate);
-  list.addEventListener('keydown', onKeyDown);
-  track.addEventListener('click', onPanelClick);
+  setActive(Math.min(storyStripActive, entries.length - 1));
+  strip.addEventListener('click', onClick);
+  strip.addEventListener('keydown', onKeyDown);
 
   return {
     destroy() {
-      list.removeEventListener('pointerover', onPointerOver);
-      list.removeEventListener('focusin', onActivate);
-      list.removeEventListener('click', onActivate);
-      list.removeEventListener('keydown', onKeyDown);
-      track.removeEventListener('click', onPanelClick);
+      strip.removeEventListener('click', onClick);
+      strip.removeEventListener('keydown', onKeyDown);
     }
   };
 }
 
-// ---------- Scan carousel ----------
-function createScanCarousel(photos) {
-  const section = document.getElementById('scan-carousel');
-  const viewport = document.getElementById('scan-carousel-viewport');
-  const track = document.getElementById('scan-carousel-track');
-  const toggleBtn = document.getElementById('scan-toggle-btn');
-  if (!section || !viewport || !track) return null;
+// ---------- Photo reel: 3D carousel ----------
+// CSS places each card from its data-pos: 0 is the front photo, ±1 and ±2 step back and turn
+// in toward it, ±3 are hidden staging spots. Only the cards from -3 to +3 exist, so the loop
+// from the last photo back to the first has no seam and any number of photos stays light.
+// Autoplay moves on every 2 seconds; it holds while the mouse rests on the front photo,
+// while keyboard focus is inside, during a drag, with the lightbox open, off screen, and
+// for reduced motion.
+const REEL_AUTOPLAY_MS = 2000;
+const REEL_MOVE_MS = 950;        // matches --reel-move
+const REEL_REACH = 3;
+const REEL_SETTLE_MS = 520;      // the front card has all but landed
+const REEL_SHINE_GAP_MS = 5600;  // the light streak crosses the front photo now and then
+let reelPhotoId = null;          // keeps the same photo in front when the archive refreshes
 
-  track.innerHTML = '';
+function createPhotoReel(photos) {
+  const section = document.getElementById('photo-reel');
+  const region = document.getElementById('reel');
+  const stage = document.getElementById('reel-stage');
+  const track = document.getElementById('reel-track');
+  const status = document.getElementById('reel-status');
+  if (!section || !region || !stage || !track) return null;
+
+  track.replaceChildren();
   section.hidden = photos.length === 0;
   if (photos.length === 0) return null;
 
-  const AUTO_SPEED = 0.045; // px per ms, gliding left to right through the scan line
-  let cards = [];
-  let cardW = 0;
-  let step = 0;
-  let loopLen = 1;
-  let viewW = 0;
-  let offset = 0;
-  let momentum = 0;
-  let focusTarget = null;
-  let frame = 0;
-  let lastTime = 0;
+  const count = photos.length;
+  const single = count === 1;
+  region.classList.toggle('is-single', single);
+
+  const slides = photos.map((photo, index) => {
+    const n = index + 1;
+    const what = photo.title || `Photo ${n} of ${count}`;
+    return {
+      id: photo.id,
+      index,
+      src: photo.src,
+      num: String(n).padStart(2, '0'),
+      label: photo.album || photo.title || 'Chapter 21',
+      alt: photo.desc || `${what}${photo.album ? ` from the ${photo.album} album` : ''}, Raveesha's 21st birthday shoot`
+    };
+  });
+  const photoAt = (v) => slides[wrapMod(v, count)];
+  const lightboxOpen = () => Boolean(document.getElementById('lightbox-modal')?.classList.contains('open'));
+  const isKeyboardFocus = (el) => {
+    try { return el.matches(':focus-visible'); } catch (_) { return true; }
+  };
+
+  let pos = Math.max(0, slides.findIndex(s => s.id === reelPhotoId)); // front card's place in the loop
+  const cards = new Map(); // place in the loop -> card
   let visible = false;
-  let userPaused = prefersReducedMotion();
   let hovering = false;
-  let focused = false;
+  let keyboardInside = false;
   let drag = null;
   let suppressClick = false;
-  let resizeTimer = 0;
+  let autoTimer = 0;
+  let settleTimer = 0;
+  let lastChange = 0;
+  let lastShine = 0;
 
-  function build() {
-    track.innerHTML = '';
-    cards = [];
-    const probe = document.createElement('div');
-    probe.className = 'scan-card';
-    probe.style.visibility = 'hidden';
-    track.appendChild(probe);
-    cardW = probe.offsetWidth || 200;
-    track.removeChild(probe);
+  function makeCard(v) {
+    const slide = photoAt(v);
+    const el = document.createElement('div');
+    el.className = 'reel-card';
+    el.setAttribute('role', 'group');
+    el.setAttribute('aria-roledescription', 'slide');
+    el.setAttribute('aria-label', `${slide.index + 1} of ${count}`);
 
-    viewW = viewport.clientWidth;
-    step = cardW + Math.round(cardW * 0.2);
-    const needed = Math.ceil((viewW + step * 2) / step);
-    const total = photos.length * Math.max(1, Math.ceil(needed / photos.length));
-    loopLen = total * step;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'reel-card-btn';
 
-    for (let i = 0; i < total; i++) {
-      const photo = photos[i % photos.length];
-      const card = createShowcaseCard(photo, 'scan-card', i >= photos.length);
-      const frameEl = document.createElement('span');
-      frameEl.className = 'scan-card-frame';
-      // Colour half is revealed by sliding a clipping window (transform only, no repaint per frame).
-      const reveal = document.createElement('span');
-      reveal.className = 'scan-card-reveal';
-      const color = createShowcaseImage(photo.src, 'scan-card-img scan-card-color');
-      reveal.appendChild(color);
-      frameEl.append(createShowcaseImage(photo.src, 'scan-card-img scan-card-mono'), reveal);
-      card.appendChild(frameEl);
-      card.addEventListener('click', (e) => {
-        if (suppressClick) {
-          e.preventDefault();
-          return;
-        }
-        openLightboxForPhotoId(photo.id);
-      });
-      card.addEventListener('focus', () => {
-        // Glide the focused card just past the scan line so keyboard users see it in colour.
-        const desired = viewW * 0.5 + cardW * 0.15;
-        const raw = desired + step - i * step;
-        const delta = wrapMod(raw - offset + loopLen / 2, loopLen) - loopLen / 2;
-        focusTarget = offset + delta;
-        momentum = 0;
-      });
-      track.appendChild(card);
-      cards.push({ el: card, reveal, color, index: i, cut: '' });
-    }
+    const img = document.createElement('img');
+    img.className = 'reel-card-img';
+    img.src = slide.src;
+    img.alt = slide.alt;
+    img.decoding = 'async';
+    img.draggable = false;
+
+    const shade = document.createElement('span');
+    shade.className = 'reel-card-shade';
+    const shine = document.createElement('span');
+    shine.className = 'reel-card-shine';
+    const meta = document.createElement('span');
+    meta.className = 'reel-card-meta';
+    meta.setAttribute('aria-hidden', 'true');
+    const label = document.createElement('span');
+    label.className = 'reel-card-label';
+    label.textContent = slide.label;
+    const num = document.createElement('span');
+    num.className = 'reel-card-num';
+    num.textContent = slide.num;
+    meta.append(label, num);
+
+    btn.append(img, shade, shine, meta);
+    el.appendChild(btn);
+    const card = { v, el, btn, slide, leaving: false, removeTimer: 0 };
+    btn.addEventListener('click', (e) => onCardClick(e, card));
+    return card;
   }
 
-  function render(dt) {
-    if (!drag) {
-      if (focusTarget !== null) {
-        offset += (focusTarget - offset) * Math.min(1, dt * 0.012);
-        if (Math.abs(focusTarget - offset) < 0.5) {
-          offset = focusTarget;
-          focusTarget = null;
-        }
-      } else if (Math.abs(momentum) > 0.003) {
-        offset += momentum * dt;
-        momentum *= Math.pow(0.94, dt / 16.7);
-      } else {
-        momentum = 0;
-        if (!userPaused && !hovering && !focused && !prefersReducedMotion()) offset += AUTO_SPEED * dt;
+  function place(card, d) {
+    card.el.dataset.pos = String(d);
+  }
+
+  function setFront(card, front) {
+    card.el.classList.toggle('is-active', front);
+    if (!front) card.el.classList.remove('is-shining');
+    if (front) card.el.removeAttribute('aria-hidden');
+    else card.el.setAttribute('aria-hidden', 'true');
+    card.btn.tabIndex = front ? 0 : -1;
+    card.btn.setAttribute('aria-label', front
+      ? `${card.slide.alt}. Open full size`
+      : `Bring photo ${card.slide.index + 1} to the front`);
+  }
+
+  function layout(prevPos) {
+    const lo = pos - REEL_REACH;
+    const hi = pos + REEL_REACH;
+
+    // Cards that dropped out of range glide to the hidden spot on their side, then go
+    cards.forEach((card) => {
+      if (card.leaving || (card.v >= lo && card.v <= hi)) return;
+      card.leaving = true;
+      place(card, card.v < pos ? -REEL_REACH : REEL_REACH);
+      setFront(card, false);
+      card.removeTimer = setTimeout(() => {
+        card.el.remove();
+        if (cards.get(card.v) === card) cards.delete(card.v);
+      }, REEL_MOVE_MS + 120);
+    });
+
+    // New cards start from the hidden spot on the side they come in from
+    let added = false;
+    for (let v = lo; v <= hi; v++) {
+      let card = cards.get(v);
+      if (card && card.leaving) {
+        clearTimeout(card.removeTimer);
+        card.leaving = false;
+      }
+      if (!card) {
+        card = makeCard(v);
+        place(card, Math.max(-REEL_REACH, Math.min(REEL_REACH, v - prevPos)));
+        track.appendChild(card.el);
+        cards.set(v, card);
+        added = true;
       }
     }
+    if (added) void track.offsetWidth; // commit the starting spots so the move animates
 
-    const half = viewW / 2;
-    for (const c of cards) {
-      const x = wrapMod(c.index * step + offset, loopLen) - step;
-      const center = x + cardW / 2;
-      const d = (center - half) / half;
-      const scale = 0.82 + 0.3 * Math.min(d * d, 1.4); // smaller at the scan line, larger at the edges
-      const left = center - (cardW * scale) / 2;
-      const cut = Math.min(Math.max((half - left) / scale, 0), cardW).toFixed(1);
-      c.el.style.transform = `translate3d(${x.toFixed(2)}px, -50%, 0) scale(${scale.toFixed(4)})`;
-      if (cut !== c.cut) {
-        c.reveal.style.transform = `translate3d(${cut}px, 0, 0)`;
-        c.color.style.transform = `translate3d(-${cut}px, 0, 0)`;
-        c.cut = cut;
-      }
+    for (let v = lo; v <= hi; v++) {
+      const card = cards.get(v);
+      place(card, v - pos);
+      setFront(card, v === pos);
     }
   }
 
-  function loop(now) {
-    const dt = lastTime ? Math.min(now - lastTime, 64) : 16;
-    lastTime = now;
-    render(dt);
-    frame = visible ? requestAnimationFrame(loop) : 0;
+  // --- Moving ---
+  function goTo(target, byUser) {
+    if (single || target === pos) return;
+    const prevPos = pos;
+    pos = target;
+    reelPhotoId = photoAt(pos).id;
+    lastChange = performance.now();
+    layout(prevPos);
+    if (status) {
+      // Autoplay changes stay silent; changes the visitor asked for are announced
+      status.setAttribute('aria-live', byUser ? 'polite' : 'off');
+      status.textContent = `Photo ${photoAt(pos).index + 1} of ${count}: ${photoAt(pos).label}`;
+    }
+    clearTimeout(settleTimer);
+    settleTimer = setTimeout(maybeShine, REEL_SETTLE_MS);
+    schedule();
   }
 
-  const io = new IntersectionObserver((entries) => {
-    visible = entries.some(e => e.isIntersecting);
-    if (visible && !frame) {
-      lastTime = 0;
-      frame = requestAnimationFrame(loop);
-    }
-  }, { rootMargin: '120px 0px' });
+  const step = (dir, byUser) => goTo(pos + dir, byUser);
 
-  // --- Drag / swipe with momentum (vertical page scrolling stays native via touch-action: pan-y) ---
-  const onPointerDown = (e) => {
-    if (e.pointerType === 'mouse' && e.button !== 0) return;
-    drag = { id: e.pointerId, startX: e.clientX, startOffset: offset, lastX: e.clientX, lastT: performance.now(), velocity: 0, moved: false };
-    momentum = 0;
-    focusTarget = null;
-  };
-  const onPointerMove = (e) => {
-    if (!drag || e.pointerId !== drag.id) return;
-    const dx = e.clientX - drag.startX;
-    if (!drag.moved) {
-      if (Math.abs(dx) < 6) return;
-      drag.moved = true;
-      viewport.classList.add('is-dragging');
-    }
+  // --- Autoplay: a fresh 2 seconds after every change; a held reel checks back later ---
+  function schedule() {
+    clearTimeout(autoTimer);
+    autoTimer = 0;
+    if (single || !visible || document.hidden || prefersReducedMotion()) return;
+    autoTimer = setTimeout(() => {
+      autoTimer = 0;
+      if (hovering || keyboardInside || drag || lightboxOpen()) schedule();
+      else step(1, false);
+    }, REEL_AUTOPLAY_MS);
+  }
+
+  // --- Shine: on a front card that has landed, at most every few seconds ---
+  function maybeShine() {
+    if (prefersReducedMotion() || !visible || document.hidden) return;
     const now = performance.now();
-    drag.velocity = (e.clientX - drag.lastX) / Math.max(now - drag.lastT, 1);
-    drag.lastX = e.clientX;
-    drag.lastT = now;
-    offset = drag.startOffset + dx;
+    if (now - lastShine < REEL_SHINE_GAP_MS || now - lastChange < REEL_SETTLE_MS - 20) return;
+    // While autoplay runs, only start right after landing so the streak ends before the next move
+    const held = hovering || keyboardInside || drag || lightboxOpen();
+    if (autoTimer && !held && now - lastChange > REEL_SETTLE_MS + 200) return;
+    const front = cards.get(pos);
+    if (!front) return;
+    lastShine = now;
+    front.el.classList.remove('is-shining');
+    void front.el.offsetWidth;
+    front.el.classList.add('is-shining');
+  }
+  const shineTimer = setInterval(maybeShine, 1500);
+  const onAnimationEnd = (e) => {
+    if (e.animationName === 'reelShine') e.target.closest('.reel-card')?.classList.remove('is-shining');
   };
-  const endDrag = (e) => {
-    if (!drag || e.pointerId !== drag.id) return;
-    if (drag.moved) {
-      const fresh = performance.now() - drag.lastT < 90;
-      momentum = e.type === 'pointerup' && fresh ? Math.max(-2.5, Math.min(2.5, drag.velocity)) : 0;
-      suppressClick = true;
-      setTimeout(() => { suppressClick = false; }, 80);
+
+  // --- Cards: the front one opens full size; any other one comes to the front ---
+  function onCardClick(e, card) {
+    if (suppressClick) {
+      e.preventDefault();
+      return;
     }
-    viewport.classList.remove('is-dragging');
+    if (card.leaving) return;
+    if (card.v === pos) openLightboxForPhotoId(card.slide.id);
+    else goTo(card.v, true);
+  }
+
+  // --- Drag / swipe: one photo per meaningful horizontal swipe; vertical scrolling stays native ---
+  const swipeThreshold = () => Math.max(44, (cards.get(pos)?.el.offsetWidth || 300) * 0.14);
+
+  function stopDrag() {
     drag = null;
+    stage.classList.remove('is-dragging');
+    track.style.removeProperty('--drag');
+    window.removeEventListener('pointermove', onPointerMove);
+    window.removeEventListener('pointerup', onPointerUp);
+    window.removeEventListener('pointercancel', onPointerUp);
+  }
+
+  const onPointerDown = (e) => {
+    if (single || drag) return;
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    drag = { id: e.pointerId, x: e.clientX, y: e.clientY, dx: 0, axis: null };
+    window.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('pointerup', onPointerUp);
+    window.addEventListener('pointercancel', onPointerUp);
   };
-  const onPointerEnter = (e) => { if (e.pointerType === 'mouse' && hasFinePointer()) hovering = true; };
-  const onPointerLeave = (e) => { if (e.pointerType === 'mouse') hovering = false; };
-  const onFocusIn = () => { focused = true; };
-  const onFocusOut = (e) => { focused = viewport.contains(e.relatedTarget); };
+
+  function onPointerMove(e) {
+    if (!drag || e.pointerId !== drag.id) return;
+    const dx = e.clientX - drag.x;
+    const dy = e.clientY - drag.y;
+    if (!drag.axis) {
+      if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return; // still a tap
+      drag.axis = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';
+      if (drag.axis === 'x') stage.classList.add('is-dragging');
+    }
+    if (drag.axis !== 'x') return;
+    drag.dx = dx;
+    // Follow the pointer with some resistance so the drag feels attached
+    const pull = Math.sign(dx) * Math.min(72, Math.abs(dx) * 0.35);
+    track.style.setProperty('--drag', `${pull.toFixed(1)}px`);
+  }
+
+  function onPointerUp(e) {
+    if (!drag || e.pointerId !== drag.id) return;
+    const { axis, dx } = drag;
+    stopDrag();
+    if (!axis) return; // a plain tap: the card's click handles it
+    suppressClick = true;
+    setTimeout(() => { suppressClick = false; }, 60);
+    if (axis === 'x' && e.type === 'pointerup' && Math.abs(dx) >= swipeThreshold()) {
+      step(dx < 0 ? 1 : -1, true); // swipe left = next
+    } else {
+      schedule();
+    }
+  }
+
   const onDragStart = (e) => e.preventDefault();
 
-  function syncToggle() {
-    if (!toggleBtn) return;
-    toggleBtn.classList.toggle('is-paused', userPaused);
-    toggleBtn.setAttribute('aria-label', userPaused ? 'Play photo carousel' : 'Pause photo carousel');
-    toggleBtn.title = userPaused ? 'Play' : 'Pause';
-  }
-  const onToggle = () => {
-    userPaused = !userPaused;
-    syncToggle();
+  // --- Hold autoplay while the mouse rests on the front photo or keyboard focus is inside ---
+  const onPointerOver = (e) => {
+    if (e.pointerType !== 'mouse' || !hasFinePointer()) return;
+    const over = Boolean(e.target.closest('.reel-card.is-active'));
+    if (over === hovering) return;
+    hovering = over;
+    if (!over) schedule();
+  };
+  const onPointerLeave = () => {
+    if (!hovering) return;
+    hovering = false;
+    schedule();
+  };
+  const onFocusIn = (e) => {
+    const keyboard = isKeyboardFocus(e.target);
+    if (keyboard === keyboardInside) return;
+    keyboardInside = keyboard;
+    if (!keyboard) schedule();
+  };
+  const onFocusOut = (e) => {
+    if (region.contains(e.relatedTarget) || !keyboardInside) return;
+    keyboardInside = false;
+    schedule();
   };
 
-  const onResize = () => {
-    clearTimeout(resizeTimer);
-    resizeTimer = setTimeout(() => {
-      build();
-      render(0);
-    }, 140);
+  // --- Keyboard: arrows move the reel when focus is inside it, or when nothing has focus
+  //     and the reel is on screen ---
+  const onKeyDown = (e) => {
+    if (single || e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+    if (lightboxOpen()) return;
+    const t = e.target;
+    const inside = region.contains(t);
+    if (!inside && !(visible && (t === document.body || t === document.documentElement))) return;
+    e.preventDefault();
+    step(e.key === 'ArrowRight' ? 1 : -1, true);
+    // Focus stays on the front card when that is what was focused
+    if (inside && t.classList.contains('reel-card-btn')) cards.get(pos)?.btn.focus({ preventScroll: true });
   };
 
-  build();
-  render(0);
-  syncToggle();
-  io.observe(section);
-  viewport.addEventListener('pointerdown', onPointerDown);
-  viewport.addEventListener('pointerenter', onPointerEnter);
-  viewport.addEventListener('pointerleave', onPointerLeave);
-  viewport.addEventListener('focusin', onFocusIn);
-  viewport.addEventListener('focusout', onFocusOut);
-  viewport.addEventListener('dragstart', onDragStart);
-  window.addEventListener('pointermove', onPointerMove);
-  window.addEventListener('pointerup', endDrag);
-  window.addEventListener('pointercancel', endDrag);
-  window.addEventListener('resize', onResize);
-  if (toggleBtn) toggleBtn.addEventListener('click', onToggle);
+  const onVisibility = () => schedule();
+  const onMotionChange = () => schedule();
+
+  const io = new IntersectionObserver((entries) => {
+    const entry = entries[entries.length - 1];
+    const nowVisible = entry.isIntersecting && entry.intersectionRatio >= 0.3;
+    if (nowVisible === visible) return;
+    visible = nowVisible;
+    schedule();
+  }, { threshold: [0, 0.3, 0.6] });
+
+  layout(pos);
+  if (status) status.textContent = `Photo ${photoAt(pos).index + 1} of ${count}: ${photoAt(pos).label}`;
+
+  stage.addEventListener('pointerdown', onPointerDown);
+  stage.addEventListener('pointerover', onPointerOver);
+  stage.addEventListener('pointerleave', onPointerLeave);
+  stage.addEventListener('dragstart', onDragStart);
+  track.addEventListener('animationend', onAnimationEnd);
+  region.addEventListener('focusin', onFocusIn);
+  region.addEventListener('focusout', onFocusOut);
+  document.addEventListener('keydown', onKeyDown);
+  document.addEventListener('visibilitychange', onVisibility);
+  if (reducedMotionQuery && reducedMotionQuery.addEventListener) reducedMotionQuery.addEventListener('change', onMotionChange);
+  io.observe(region);
 
   return {
     destroy() {
-      visible = false;
-      cancelAnimationFrame(frame);
-      frame = 0;
-      clearTimeout(resizeTimer);
+      clearTimeout(autoTimer);
+      clearTimeout(settleTimer);
+      clearInterval(shineTimer);
+      cards.forEach(card => clearTimeout(card.removeTimer));
       io.disconnect();
-      viewport.removeEventListener('pointerdown', onPointerDown);
-      viewport.removeEventListener('pointerenter', onPointerEnter);
-      viewport.removeEventListener('pointerleave', onPointerLeave);
-      viewport.removeEventListener('focusin', onFocusIn);
-      viewport.removeEventListener('focusout', onFocusOut);
-      viewport.removeEventListener('dragstart', onDragStart);
-      window.removeEventListener('pointermove', onPointerMove);
-      window.removeEventListener('pointerup', endDrag);
-      window.removeEventListener('pointercancel', endDrag);
-      window.removeEventListener('resize', onResize);
-      if (toggleBtn) toggleBtn.removeEventListener('click', onToggle);
-      viewport.classList.remove('is-dragging');
-      track.innerHTML = '';
+      stopDrag();
+      stage.removeEventListener('pointerdown', onPointerDown);
+      stage.removeEventListener('pointerover', onPointerOver);
+      stage.removeEventListener('pointerleave', onPointerLeave);
+      stage.removeEventListener('dragstart', onDragStart);
+      track.removeEventListener('animationend', onAnimationEnd);
+      region.removeEventListener('focusin', onFocusIn);
+      region.removeEventListener('focusout', onFocusOut);
+      document.removeEventListener('keydown', onKeyDown);
+      document.removeEventListener('visibilitychange', onVisibility);
+      if (reducedMotionQuery && reducedMotionQuery.removeEventListener) reducedMotionQuery.removeEventListener('change', onMotionChange);
+      region.classList.remove('is-single');
+      track.replaceChildren();
     }
   };
 }
