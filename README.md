@@ -11,7 +11,7 @@ A modern, high-performance birthday photoshoot album and living photo gallery po
 The admin account is set with private environment variables, never in this repository (it is public):
 
 - `ADMIN_USERNAME`: the name typed in the Username box
-- `ADMIN_PASSWORD`: at least 10 characters; without it, nobody can sign in
+- `ADMIN_PASSWORD`: any length; without it, nobody can sign in
 - `ADMIN_TOKEN_SECRET` (optional): a long random string used to sign sessions
 
 **Live site:** add them in Vercel → the project → Settings → Environment Variables, then redeploy.

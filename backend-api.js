@@ -157,12 +157,11 @@ async function storeUploadedImage(buffer, mimeType, safeFilename, dataUrl) {
 // ================= ADMIN SIGN-IN =================
 // The admin account lives in private environment variables, never in this repository (it is
 // public on GitHub): ADMIN_USERNAME and ADMIN_PASSWORD. On Vercel: Project → Settings →
-// Environment Variables. Locally: a .env.local file. Without a password of at least
-// MIN_PASSWORD_LENGTH characters, nobody can sign in.
+// Environment Variables. Locally: a .env.local file. Without a password, nobody can sign in.
+// Any length is accepted (the owner's choice).
 const ADMIN_USERNAME = (process.env.ADMIN_USERNAME || 'admin').trim() || 'admin';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '';
-const MIN_PASSWORD_LENGTH = 10;
-const SIGN_IN_READY = ADMIN_PASSWORD.length >= MIN_PASSWORD_LENGTH;
+const SIGN_IN_READY = ADMIN_PASSWORD.length > 0;
 const FAILED_SIGN_IN_DELAY_MS = 900;
 
 // Compares fixed-length digests in constant time, so a wrong guess reveals nothing about
@@ -292,7 +291,7 @@ export async function handleApiRequest(req, res) {
     if (!SIGN_IN_READY) {
       return sendJSON(503, {
         success: false,
-        error: `Sign-in isn't set up yet. Add ADMIN_USERNAME and ADMIN_PASSWORD (at least ${MIN_PASSWORD_LENGTH} characters) to this site's environment variables, then redeploy.`
+        error: `Sign-in isn't set up yet. Add ADMIN_USERNAME and ADMIN_PASSWORD to this site's environment variables, then redeploy.`
       });
     }
 
