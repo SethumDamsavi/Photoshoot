@@ -9,6 +9,12 @@
 // signed people in automatically for a day; that copy is cleared.
 const SESSION_KEY = 'admin_token';
 
+// Photos saved as "uploads/…" are files at the site root; a leading slash keeps them
+// loading on /admin/ as well as /admin
+function sitePath(src) {
+  return typeof src === 'string' && src.startsWith('uploads/') ? `/${src}` : src;
+}
+
 function readSession() {
   try { return sessionStorage.getItem(SESSION_KEY) || ''; } catch (_) { return ''; }
 }
@@ -648,7 +654,7 @@ function renderProductsTable(prods) {
   }
 
   productsTableBody.innerHTML = prods.map(prod => {
-    const imgSrc = prod.image || (prod.images && prod.images[0] ? prod.images[0].src : '/assets/portrait.jpg');
+    const imgSrc = sitePath(prod.image || (prod.images && prod.images[0] ? prod.images[0].src : '/assets/portrait.jpg'));
     const isFeatured = Boolean(prod.featured);
     const isPublished = prod.published !== false;
     const dateStr = prod.date || 'October 9, 2026';
@@ -657,7 +663,7 @@ function renderProductsTable(prods) {
     return `
       <tr data-id="${prod.id}">
         <td>
-          <img src="${escapeHtml(imgSrc)}" alt="${escapeHtml(prod.name || 'Untitled photo')}" class="table-thumb" onerror="this.onerror=null; this.src='/assets/portrait.jpg';">
+          <img src="${escapeHtml(imgSrc)}" alt="${escapeHtml(prod.name || 'Untitled photo')}" class="table-thumb" onerror="this.onerror=null; this.style.visibility='hidden';">
         </td>
         <td>
           <div class="product-cell-details">
@@ -752,7 +758,7 @@ function openEditProductModal(id) {
 
   const imgSrc = prod.image || (prod.images && prod.images[0] ? prod.images[0].src : '/assets/portrait.jpg');
   prodImageUrlInput.value = imgSrc;
-  imagePreviewImg.src = imgSrc;
+  imagePreviewImg.src = sitePath(imgSrc);
 
   productModal.classList.add('open');
   productModal.setAttribute('aria-hidden', 'false');

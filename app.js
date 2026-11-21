@@ -119,6 +119,45 @@ async function fetchSettings() {
   }
 }
 
+// ================= PHOTO LOAD RETRIES =================
+// A photo that fails to load is tried again a few times: right after an update goes live, a
+// page can receive the new photo list a moment before it can reach the new photo files. A
+// photo that still won't load is hidden (its gallery card too), never swapped for a
+// different picture.
+const PHOTO_RETRY_DELAYS_MS = [1500, 4000, 10000, 20000];
+const PHOTO_RETRY_PARAM = /[?&]photo-retry=\d+$/;
+
+document.addEventListener('error', (event) => {
+  const img = event.target;
+  if (!(img instanceof HTMLImageElement)) return;
+  const failedSrc = img.getAttribute('src') || '';
+  if (!failedSrc || failedSrc.startsWith('data:') || failedSrc.startsWith('blob:')) return;
+
+  const original = failedSrc.replace(PHOTO_RETRY_PARAM, '');
+  if (img.dataset.retrySrc !== original) {
+    img.dataset.retrySrc = original;
+    img.dataset.retries = '0';
+  }
+  const attempt = Number(img.dataset.retries) || 0;
+  if (attempt >= PHOTO_RETRY_DELAYS_MS.length) {
+    img.classList.add('photo-missing');
+    return;
+  }
+  img.dataset.retries = String(attempt + 1);
+  setTimeout(() => {
+    // Skip when the image was removed or has since been given a different photo
+    if (!img.isConnected || img.getAttribute('src') !== failedSrc) return;
+    img.src = `${original}${original.includes('?') ? '&' : '?'}photo-retry=${attempt + 1}`;
+  }, PHOTO_RETRY_DELAYS_MS[attempt]);
+}, true);
+
+document.addEventListener('load', (event) => {
+  const img = event.target;
+  if (img instanceof HTMLImageElement && img.classList.contains('photo-missing')) {
+    img.classList.remove('photo-missing');
+  }
+}, true);
+
 // ================= INITIALIZATION =================
 document.addEventListener('DOMContentLoaded', () => {
   // Apply default or cached settings immediately to prevent flash or old photos
@@ -193,6 +232,12 @@ window.addEventListener('storage', (e) => {
 });
 
 // Load photo collection and albums from Backend
+// Photos saved as "uploads/…" are files at the site root; a leading slash keeps them
+// loading whatever page path they are shown on
+function sitePath(src) {
+  return typeof src === 'string' && src.startsWith('uploads/') ? `/${src}` : src;
+}
+
 function mapRawProducts(rawProducts) {
   return rawProducts.map(p => {
     // Title and album are optional in Studio Admin. A blank album means the photo shows only
@@ -210,6 +255,7 @@ function mapRawProducts(rawProducts) {
     } else {
       imageList = [{ src: 'assets/portrait.jpg', alt: p.name }];
     }
+    imageList = imageList.map(item => (item && typeof item === 'object' ? { ...item, src: sitePath(item.src) } : item));
 
     return {
       id: p.id,
@@ -586,14 +632,14 @@ function createPhotoCard(product, index) {
   card.innerHTML = `
     <div class="photo-card-frame">
       <div class="card-media-wrapper" role="button" tabindex="0" aria-label="${openLabel}">
-        <img class="photo-card-img" src="${src}" alt="${alt}" loading="lazy" decoding="async" onerror="this.onerror=null;this.src='assets/portrait.jpg'">
+        <img class="photo-card-img" src="${src}" alt="${alt}" loading="lazy" decoding="async">
       </div>
       ${product.category ? `<span class="photo-card-album">${escapeHtml(product.category)}</span>` : ''}
       <button type="button" class="card-fav-btn ${isBookmarked ? 'is-favorite' : ''}" aria-pressed="${isBookmarked}" aria-label="${favLabel}" title="${favLabel}">
         ${isBookmarked ? ICONS.heartFilled : ICONS.heartOutline}
       </button>
       <div class="photo-card-glass">
-        <img class="photo-card-frost" src="${src}" alt="" aria-hidden="true" loading="lazy" decoding="async" onerror="this.remove()">
+        <img class="photo-card-frost" src="${src}" alt="" aria-hidden="true" loading="lazy" decoding="async">
         <div class="photo-card-copy">
           ${product.name ? `<h3 class="photo-card-title">${name}</h3>` : ''}
           ${quote ? `<p class="photo-card-quote">${escapeHtml(quote)}</p>` : ''}
@@ -1293,7 +1339,7 @@ function createStoryStrip() {
     // The story portrait: open it in the lightbox when it is one of the archive photos
     const storyImg = document.getElementById('story-polaroid-img');
     const src = storyImg ? storyImg.getAttribute('src') : '';
-    const match = products.find(p => p.published !== false && p.image === src);
+    const match = products.find(p => p.published !== false && p.image === sitePath(src));
     if (match) openLightboxForPhotoId(match.id); else openLightbox(0);
   }
 

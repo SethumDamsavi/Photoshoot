@@ -1499,6 +1499,16 @@ input, select, textarea {
   height: 100%;
 }
 
+/* A photo that still won't load after its retries (see app.js) is hidden, never replaced
+   with a different picture; its gallery card leaves the grid */
+img.photo-missing {
+  visibility: hidden;
+}
+
+.photo-card:has(.photo-card-img.photo-missing) {
+  display: none;
+}
+
 /* Album chip and favourite button: small frosted pills over the photo */
 .photo-card-album {
   position: absolute;
