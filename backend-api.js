@@ -69,12 +69,81 @@ async function readJSON(file) {
 
   const key = REDIS_PREFIX + path.basename(file, '.json');
   const stored = await redisCommand(['GET', key]);
-  if (stored) return JSON.parse(stored);
+  if (stored) {
+    const data = JSON.parse(stored);
+    return file === PRODUCTS_FILE ? importLocalPhotos(data) : data;
+  }
 
   // First run: seed the shared store from the bundled dataset
   const seed = readLocalJSON(file);
   await redisCommand(['SET', key, JSON.stringify(seed), 'NX']);
   return seed;
+}
+
+// Photos added on this computer (files in uploads/, listed in data/products.json) reach the
+// live store once each. Every imported image path is remembered in a Redis set, so a photo
+// deleted on the live site doesn't come back. While the local batch is unchanged, the check
+// is a single read per server instance.
+const PHOTO_IMPORT_SET = REDIS_PREFIX + 'imported-photos';
+const PHOTO_IMPORT_MARK = REDIS_PREFIX + 'photo-import';
+const PHOTO_IMPORT_LOCK = REDIS_PREFIX + 'photo-import-lock';
+let photoImportDone = false;
+
+async function importLocalPhotos(current) {
+  if (photoImportDone) return current;
+  let locked = false;
+  try {
+    const local = readLocalJSON(PRODUCTS_FILE)
+      .filter(p => p && typeof p.image === 'string' && p.image.startsWith('uploads/'));
+    const signature = crypto.createHash('sha256')
+      .update(local.map(p => p.image).sort().join('\n')).digest('hex');
+    if (!local.length || (await redisCommand(['GET', PHOTO_IMPORT_MARK])) === signature) {
+      photoImportDone = true;
+      return current;
+    }
+
+    // One instance imports at a time; the others keep the list they have until it's done
+    locked = (await redisCommand(['SET', PHOTO_IMPORT_LOCK, '1', 'NX', 'PX', '15000'])) === 'OK';
+    if (!locked) return current;
+
+    const key = REDIS_PREFIX + 'products';
+    const latest = JSON.parse((await redisCommand(['GET', key])) || '[]');
+    const imported = new Set((await redisCommand(['SMEMBERS', PHOTO_IMPORT_SET])) || []);
+    const liveImages = new Set(latest.map(p => p.image));
+
+    // Photos keep their local ids unless the live site already uses that id
+    const usedIds = new Set(latest.map(p => Number(p.id)).filter(Number.isInteger));
+    let nextId = Math.max(0, ...usedIds, ...local.map(p => Number(p.id)).filter(Number.isInteger)) + 1;
+    const takeId = (wanted) => {
+      let id = Number(wanted);
+      if (!Number.isInteger(id) || id <= 0 || usedIds.has(id)) {
+        while (usedIds.has(nextId)) nextId++;
+        id = nextId;
+      }
+      usedIds.add(id);
+      return id;
+    };
+    const added = local
+      .filter(p => !imported.has(p.image) && !liveImages.has(p.image))
+      .map(p => ({ ...p, id: takeId(p.id) }));
+
+    let result = latest;
+    if (added.length) {
+      result = [...added, ...latest];
+      await redisCommand(['SET', key, JSON.stringify(result)]);
+      console.log(`Added ${added.length} photo(s) from uploads/ to the live store.`);
+    }
+    await redisCommand(['SADD', PHOTO_IMPORT_SET, ...local.map(p => p.image)]);
+    await redisCommand(['SET', PHOTO_IMPORT_MARK, signature]);
+    photoImportDone = true;
+    return result;
+  } catch (err) {
+    // The gallery keeps working with what it has; the next request tries again
+    console.warn('Could not add the photos from uploads/:', err.message);
+    return current;
+  } finally {
+    if (locked) await redisCommand(['DEL', PHOTO_IMPORT_LOCK]).catch(() => {});
+  }
 }
 
 async function writeJSON(file, data) {

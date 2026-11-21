@@ -62,6 +62,22 @@ export default defineConfig({
           next();
         });
       }
-    }
+    },
+    (() => {
+      // Photos added on this computer are files in uploads/ (their image paths start with
+      // "uploads/"), so the build copies that folder into the site. Without it they 404 live.
+      let outDir = '';
+      return {
+        name: 'copy-uploads',
+        apply: 'build',
+        configResolved(config) {
+          outDir = path.resolve(config.root, config.build.outDir);
+        },
+        closeBundle() {
+          const from = path.resolve(__dirname, 'uploads');
+          if (fs.existsSync(from)) fs.cpSync(from, path.join(outDir, 'uploads'), { recursive: true });
+        }
+      };
+    })()
   ]
 });
