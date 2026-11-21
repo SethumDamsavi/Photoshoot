@@ -8,3 +8,6 @@ dist/
 .env.*
 !.env.example
 .vercel
+
+# Admin sign-in created on /admin when running on this computer
+.admin-account.json

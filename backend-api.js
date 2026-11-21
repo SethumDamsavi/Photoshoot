@@ -155,14 +155,29 @@ async function storeUploadedImage(buffer, mimeType, safeFilename, dataUrl) {
 }
 
 // ================= ADMIN SIGN-IN =================
-// The admin account lives in private environment variables, never in this repository (it is
-// public on GitHub): ADMIN_USERNAME and ADMIN_PASSWORD. On Vercel: Project → Settings →
-// Environment Variables. Locally: a .env.local file. Without a password, nobody can sign in.
-// Any length is accepted (the owner's choice).
-const ADMIN_USERNAME = (process.env.ADMIN_USERNAME || 'admin').trim() || 'admin';
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '';
-const SIGN_IN_READY = ADMIN_PASSWORD.length > 0;
+// The admin account is never kept in this repository (it is public on GitHub). It comes
+// from one of two places:
+//  1. The environment variables ADMIN_USERNAME and ADMIN_PASSWORD (Vercel → Settings →
+//     Environment Variables, or .env.local on this computer). When ADMIN_PASSWORD is set,
+//     it is the only way in.
+//  2. Otherwise, an account the owner creates once on the /admin page with a one-time
+//     setup code. It is saved in the site's shared storage (Redis on Vercel, the git-ignored
+//     .admin-account.json on this computer) with the password scrypt-hashed.
+// Only the SHA-256 of the setup code is in this file; the code itself was given to the
+// owner privately. Each code works once. To let the owner choose a new username and
+// password (for example after forgetting it), put the hash of a new code here.
+// Passwords may be any length (the owner's choice).
+const ENV_USERNAME = (process.env.ADMIN_USERNAME || 'admin').trim() || 'admin';
+const ENV_PASSWORD = process.env.ADMIN_PASSWORD || '';
+const SETUP_CODE_SHA256 = 'c8df0446b961a5f17a95230232f9f9bf4cdc788f6159e0dd11c79bfcc919fbaa';
+const ACCOUNT_KEY = REDIS_PREFIX + 'admin-account';
+const ACCOUNT_FILE = path.resolve(process.cwd(), '.admin-account.json');
+const SCRYPT_PARAMS = { N: 16384, r: 8, p: 1 };
+const MAX_USERNAME_LENGTH = 64;
+const MAX_PASSWORD_LENGTH = 1024;
 const FAILED_SIGN_IN_DELAY_MS = 900;
+
+const pause = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 // Compares fixed-length digests in constant time, so a wrong guess reveals nothing about
 // how close it was
@@ -172,37 +187,125 @@ function sameSecret(a, b) {
   return crypto.timingSafeEqual(da, db);
 }
 
-function checkCredentials(username, password) {
-  if (!SIGN_IN_READY) return false;
-  const nameOk = sameSecret(String(username || '').trim().toLowerCase(), ADMIN_USERNAME.toLowerCase());
-  const passwordOk = sameSecret(typeof password === 'string' ? password : '', ADMIN_PASSWORD);
-  return nameOk && passwordOk;
+function hashPassword(password, salt, params = SCRYPT_PARAMS) {
+  return new Promise((resolve, reject) => {
+    crypto.scrypt(password, salt, 32, { N: params.N, r: params.r, p: params.p, maxmem: 64 * 1024 * 1024 },
+      (err, key) => (err ? reject(err) : resolve(key.toString('base64'))));
+  });
+}
+
+// The setup code is compared without its dashes, spaces or letter case
+function setupCodeMatches(code) {
+  const typed = String(code || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  const digest = crypto.createHash('sha256').update(`admin-setup|${typed}`).digest('hex');
+  return sameSecret(digest, SETUP_CODE_SHA256);
+}
+
+async function readAccount() {
+  let account = null;
+  try {
+    if (USE_REDIS) {
+      const stored = await redisCommand(['GET', ACCOUNT_KEY]);
+      account = stored ? JSON.parse(stored) : null;
+    } else if (fs.existsSync(ACCOUNT_FILE)) {
+      account = JSON.parse(fs.readFileSync(ACCOUNT_FILE, 'utf-8'));
+    }
+  } catch (err) {
+    if (err instanceof SyntaxError) return null;
+    throw err;
+  }
+  const valid = account && typeof account.username === 'string' && account.username &&
+    typeof account.salt === 'string' && typeof account.hash === 'string';
+  return valid ? account : null;
+}
+
+async function saveAccount(account) {
+  if (USE_REDIS) {
+    await redisCommand(['SET', ACCOUNT_KEY, JSON.stringify(account)]);
+    return;
+  }
+  try {
+    fs.writeFileSync(ACCOUNT_FILE, JSON.stringify(account, null, 2), 'utf-8');
+  } catch (_) {
+    throw new Error('Storage is read-only. Connect an Upstash Redis store to this Vercel project so the sign-in can be saved.');
+  }
 }
 
 // Sessions are signed tokens, so every serverless instance accepts them without shared memory.
-// The signing key mixes a private secret with the admin username and password: changing the
-// password signs everyone out, and "v2" retired every session issued before sign-in moved
-// out of the repository.
+// The signing key mixes a private secret with the current sign-in, so a new password signs
+// everyone out. "v2" (environment variables) and "v3" (account made with a setup code)
+// retired every session issued before sign-in moved out of the repository.
 const SESSION_TTL_MS = 8 * 60 * 60 * 1000;
 const TOKEN_SECRET_BASE = process.env.ADMIN_TOKEN_SECRET || REDIS_TOKEN || process.env.BLOB_READ_WRITE_TOKEN || 'birthday-shoot';
-const TOKEN_KEY = crypto.createHmac('sha256', TOKEN_SECRET_BASE)
-  .update(`admin-session-v2|${ADMIN_USERNAME.toLowerCase()}|${ADMIN_PASSWORD}`)
-  .digest();
 
-function signToken(user) {
+function tokenKeyFor(material) {
+  return crypto.createHmac('sha256', TOKEN_SECRET_BASE).update(material).digest();
+}
+
+function signInFromAccount(account) {
+  return {
+    mode: 'account',
+    username: account.username,
+    account,
+    tokenKey: tokenKeyFor(`admin-session-v3|${account.username.toLowerCase()}|${account.hash}`)
+  };
+}
+
+// Today's sign-in: { mode: 'env' | 'account' | 'none', username, tokenKey, account }
+async function currentSignIn() {
+  if (ENV_PASSWORD) {
+    return {
+      mode: 'env',
+      username: ENV_USERNAME,
+      tokenKey: tokenKeyFor(`admin-session-v2|${ENV_USERNAME.toLowerCase()}|${ENV_PASSWORD}`)
+    };
+  }
+  const account = await readAccount();
+  return account ? signInFromAccount(account) : { mode: 'none' };
+}
+
+async function checkCredentials(signIn, username, password) {
+  if (signIn.mode === 'none') return false;
+  const typedPassword = typeof password === 'string' ? password : '';
+  if (typedPassword.length > MAX_PASSWORD_LENGTH) return false;
+
+  const nameOk = sameSecret(String(username || '').trim().toLowerCase(), signIn.username.toLowerCase());
+  let passwordOk;
+  if (signIn.mode === 'env') {
+    passwordOk = sameSecret(typedPassword, ENV_PASSWORD);
+  } else {
+    const { salt, hash, params } = signIn.account;
+    passwordOk = sameSecret(await hashPassword(typedPassword, Buffer.from(salt, 'base64'), params || SCRYPT_PARAMS), hash);
+  }
+  return nameOk && passwordOk;
+}
+
+function sessionUser(signIn) {
+  return { username: signIn.username, name: signIn.username, role: 'administrator' };
+}
+
+function signToken(user, tokenKey) {
   const payload = Buffer.from(JSON.stringify({ user, expiresAt: Date.now() + SESSION_TTL_MS })).toString('base64url');
-  const signature = crypto.createHmac('sha256', TOKEN_KEY).update(payload).digest('base64url');
+  const signature = crypto.createHmac('sha256', tokenKey).update(payload).digest('base64url');
   return `${payload}.${signature}`;
 }
 
-export function verifyAuthToken(req) {
-  if (!SIGN_IN_READY) return null;
+export async function verifyAuthToken(req) {
   const authHeader = req.headers['authorization'] || '';
   const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : authHeader.trim();
   if (!token || token.split('.').length !== 2) return null;
 
+  let signIn;
+  try {
+    signIn = await currentSignIn();
+  } catch (err) {
+    console.warn('Could not read the admin sign-in:', err.message);
+    return null;
+  }
+  if (signIn.mode === 'none') return null;
+
   const [payload, signature] = token.split('.');
-  const expected = crypto.createHmac('sha256', TOKEN_KEY).update(payload).digest('base64url');
+  const expected = crypto.createHmac('sha256', signIn.tokenKey).update(payload).digest('base64url');
   if (!signature || signature.length !== expected.length ||
       !crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) {
     return null;
@@ -286,36 +389,94 @@ export async function handleApiRequest(req, res) {
     return true;
   };
 
-  // 1. AUTH: Login (the one admin account from the environment variables)
+  // 1. AUTH: Is sign-in ready, or does the owner still need to create it with the setup code?
+  if (pathname === '/api/auth/status' && method === 'GET') {
+    const signIn = await currentSignIn();
+    const setupAvailable = signIn.mode === 'none' ||
+      (signIn.mode === 'account' && signIn.account.setupCode !== SETUP_CODE_SHA256);
+    return sendJSON(200, { needsSetup: signIn.mode === 'none', setupAvailable });
+  }
+
+  // 1.1 AUTH: Create the admin sign-in with the one-time setup code, and sign straight in
+  if (pathname === '/api/auth/setup' && method === 'POST') {
+    if (ENV_PASSWORD) {
+      return sendJSON(409, {
+        success: false,
+        error: "This site's sign-in is set in its environment variables, so it can't be changed here."
+      });
+    }
+
+    const { setupCode, username, password } = await parseBody(req);
+    if (!setupCodeMatches(setupCode)) {
+      await pause(FAILED_SIGN_IN_DELAY_MS);
+      return sendJSON(401, { success: false, error: "That setup code isn't right. Check it and try again." });
+    }
+
+    const existing = await readAccount();
+    if (existing && existing.setupCode === SETUP_CODE_SHA256) {
+      return sendJSON(409, {
+        success: false,
+        alreadyUsed: true,
+        error: 'This setup code has already been used. Sign in with the username and password you chose.'
+      });
+    }
+
+    const name = typeof username === 'string' ? username.trim() : '';
+    if (!name || name.length > MAX_USERNAME_LENGTH) {
+      return sendJSON(400, { success: false, error: `Choose a username (up to ${MAX_USERNAME_LENGTH} characters).` });
+    }
+    if (typeof password !== 'string' || !password || password.length > MAX_PASSWORD_LENGTH) {
+      return sendJSON(400, { success: false, error: 'Choose a password.' });
+    }
+
+    const salt = crypto.randomBytes(16);
+    const account = {
+      username: name,
+      salt: salt.toString('base64'),
+      hash: await hashPassword(password, salt),
+      params: SCRYPT_PARAMS,
+      setupCode: SETUP_CODE_SHA256,
+      createdAt: new Date().toISOString()
+    };
+    await saveAccount(account);
+
+    const signIn = signInFromAccount(account);
+    const user = sessionUser(signIn);
+    return sendJSON(200, { success: true, token: signToken(user, signIn.tokenKey), user });
+  }
+
+  // 1.2 AUTH: Login
   if (pathname === '/api/auth/login' && method === 'POST') {
-    if (!SIGN_IN_READY) {
+    const signIn = await currentSignIn();
+    if (signIn.mode === 'none') {
       return sendJSON(503, {
         success: false,
-        error: `Sign-in isn't set up yet. Add ADMIN_USERNAME and ADMIN_PASSWORD to this site's environment variables, then redeploy.`
+        needsSetup: true,
+        error: "Sign-in isn't set up yet. Enter your setup code to create it."
       });
     }
 
     const { username, password } = await parseBody(req);
-    if (!checkCredentials(username, password)) {
+    if (!(await checkCredentials(signIn, username, password))) {
       // A pause after every wrong guess makes guessing passwords slow
-      await new Promise(resolve => setTimeout(resolve, FAILED_SIGN_IN_DELAY_MS));
+      await pause(FAILED_SIGN_IN_DELAY_MS);
       return sendJSON(401, {
         success: false,
         error: 'Invalid username or password.'
       });
     }
 
-    const user = { username: ADMIN_USERNAME, name: ADMIN_USERNAME, role: 'administrator' };
+    const user = sessionUser(signIn);
     return sendJSON(200, {
       success: true,
-      token: signToken(user),
+      token: signToken(user, signIn.tokenKey),
       user
     });
   }
 
   // 2. AUTH: Check current user session
   if (pathname === '/api/auth/me' && method === 'GET') {
-    const user = verifyAuthToken(req);
+    const user = await verifyAuthToken(req);
     if (!user) return sendJSON(401, { authenticated: false, error: 'Unauthorized' });
     return sendJSON(200, { authenticated: true, user });
   }
@@ -333,7 +494,7 @@ export async function handleApiRequest(req, res) {
 
   // 3.6. SETTINGS: POST / PUT (Admin only - update hero image and plaque)
   if (pathname === '/api/settings' && (method === 'POST' || method === 'PUT')) {
-    if (!verifyAuthToken(req)) return sendJSON(401, { error: 'Authentication required' });
+    if (!(await verifyAuthToken(req))) return sendJSON(401, { error: 'Authentication required' });
 
     const body = await parseBody(req);
     const currentSettings = await readJSON(SETTINGS_FILE);
@@ -371,7 +532,7 @@ export async function handleApiRequest(req, res) {
   }
 
   if (pathname === '/api/sync' && method === 'POST') {
-    if (!verifyAuthToken(req)) return sendJSON(401, { error: 'Authentication required' });
+    if (!(await verifyAuthToken(req))) return sendJSON(401, { error: 'Authentication required' });
     const body = await parseBody(req);
     if (body.settings && typeof body.settings === 'object') {
       const current = await readJSON(SETTINGS_FILE);
@@ -410,7 +571,7 @@ export async function handleApiRequest(req, res) {
 
   // 5. CATEGORIES: POST (Admin only)
   if (pathname === '/api/categories' && method === 'POST') {
-    if (!verifyAuthToken(req)) return sendJSON(401, { error: 'Authentication required' });
+    if (!(await verifyAuthToken(req))) return sendJSON(401, { error: 'Authentication required' });
 
     const { name } = await parseBody(req);
     if (!name || !name.trim()) return sendJSON(400, { error: 'Category name is required' });
@@ -431,7 +592,7 @@ export async function handleApiRequest(req, res) {
 
   // 6. CATEGORIES: DELETE (Admin only)
   if (pathname.startsWith('/api/categories/') && method === 'DELETE') {
-    if (!verifyAuthToken(req)) return sendJSON(401, { error: 'Authentication required' });
+    if (!(await verifyAuthToken(req))) return sendJSON(401, { error: 'Authentication required' });
     const catId = pathname.split('/')[3];
 
     let categories = await readJSON(CATEGORIES_FILE);
@@ -481,7 +642,7 @@ export async function handleApiRequest(req, res) {
 
   // 9. PHOTOS/PRODUCTS: POST (Admin only - create photo)
   if ((pathname === '/api/products' || pathname === '/api/photos') && method === 'POST') {
-    if (!verifyAuthToken(req)) return sendJSON(401, { error: 'Authentication required' });
+    if (!(await verifyAuthToken(req))) return sendJSON(401, { error: 'Authentication required' });
 
     // Title and album are both optional
     const body = await parseBody(req);
@@ -514,7 +675,7 @@ export async function handleApiRequest(req, res) {
 
   // 10. PHOTOS/PRODUCTS: PUT (Admin only - update photo)
   if ((pathname.match(/^\/api\/products\/\d+$/) || pathname.match(/^\/api\/photos\/\d+$/)) && method === 'PUT') {
-    if (!verifyAuthToken(req)) return sendJSON(401, { error: 'Authentication required' });
+    if (!(await verifyAuthToken(req))) return sendJSON(401, { error: 'Authentication required' });
 
     const id = parseInt(pathname.split('/')[3], 10);
     const body = await parseBody(req);
@@ -544,7 +705,7 @@ export async function handleApiRequest(req, res) {
 
   // 11. PRODUCTS: DELETE (Admin only)
   if (pathname.match(/^\/api\/products\/\d+$/) && method === 'DELETE') {
-    if (!verifyAuthToken(req)) return sendJSON(401, { error: 'Authentication required' });
+    if (!(await verifyAuthToken(req))) return sendJSON(401, { error: 'Authentication required' });
 
     const id = parseInt(pathname.split('/')[3], 10);
     let products = await readJSON(PRODUCTS_FILE);
@@ -559,7 +720,7 @@ export async function handleApiRequest(req, res) {
 
   // 12. IMAGE UPLOAD: POST (Admin only - accepts Base64 image payload)
   if (pathname === '/api/upload' && method === 'POST') {
-    if (!verifyAuthToken(req)) return sendJSON(401, { error: 'Authentication required' });
+    if (!(await verifyAuthToken(req))) return sendJSON(401, { error: 'Authentication required' });
 
     const { dataUrl, filename } = await parseBody(req);
     if (!dataUrl || !dataUrl.includes('base64,')) {

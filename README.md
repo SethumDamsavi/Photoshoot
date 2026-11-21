@@ -8,14 +8,12 @@ A modern, high-performance birthday photoshoot album and living photo gallery po
 
 ## 👑 Studio Admin Sign-in
 
-The admin account is set with private environment variables, never in this repository (it is public):
+The admin sign-in is never stored in this repository (it is public). It is set in one of two ways:
 
-- `ADMIN_USERNAME`: the name typed in the Username box
-- `ADMIN_PASSWORD`: any length; without it, nobody can sign in
-- `ADMIN_TOKEN_SECRET` (optional): a long random string used to sign sessions
+- **On the site:** open `/admin`. While no sign-in exists, the page asks for the one-time setup code and lets you choose your username and password (any length). The account is saved in the site's Redis store with the password hashed (on this computer, in the git-ignored `.admin-account.json`). Each setup code works once. To choose a new password later, a new code is issued: its SHA-256 goes in `SETUP_CODE_SHA256` in `backend-api.js`, and the sign-in page then shows "Have a setup code?".
+- **Environment variables:** `ADMIN_USERNAME` and `ADMIN_PASSWORD` (any length). Live site: Vercel → the project → Settings → Environment Variables, then redeploy. This computer: copy `.env.example` to `.env.local` and fill it in (git ignores `.env.local`). When `ADMIN_PASSWORD` is set, it replaces the account made on the site.
 
-**Live site:** add them in Vercel → the project → Settings → Environment Variables, then redeploy.
-**This computer:** copy `.env.example` to `.env.local` and fill it in (git ignores `.env.local`).
+`ADMIN_TOKEN_SECRET` (optional) is a long random string used to sign sessions.
 
 A sign-in lasts until the browser tab is closed (at most 8 hours). Changing the password signs everyone out.
 
@@ -24,7 +22,9 @@ A sign-in lasts until the browser tab is closed (at most 8 hours). Changing the 
 ## 🔌 Integrated Backend Architecture
 
 - **Backend API Endpoints:**
-  - `POST /api/auth/login` — Checks the admin sign-in from the environment variables and returns a signed 8-hour session token.
+  - `GET /api/auth/status` — Says whether the admin sign-in still has to be created with the setup code.
+  - `POST /api/auth/setup` — Creates the admin sign-in with the one-time setup code and signs in.
+  - `POST /api/auth/login` — Checks the admin sign-in and returns a signed 8-hour session token.
   - `GET /api/auth/me` — Verifies active admin session.
   - `POST /api/auth/logout` — Destroys current session.
   - `GET /api/products` (alias `GET /api/photos`) — Fetches birthday photoshoot moments with search, album filtering, and sorting (`newest`, `featured`, `oldest`, `title`).

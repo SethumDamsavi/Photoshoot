@@ -29,14 +29,20 @@
             <circle cx="12" cy="13" r="4"/>
           </svg>
         </div>
-        <h1 class="login-title">Studio Admin</h1>
-        <p class="login-desc">Sign in to curate, upload, and organize Raveesha's 21st birthday photo archive.</p>
+        <h1 id="login-title" class="login-title">Studio Admin</h1>
+        <p id="login-desc" class="login-desc">Sign in to curate, upload, and organize Raveesha's 21st birthday photo archive.</p>
       </div>
 
       <!-- POST, and the button stays disabled until admin.js is ready, so a password can never
            be sent in the address bar by a submit that happens before the script loads -->
       <form id="login-form" class="login-form" method="post">
         <div id="login-error" class="login-error-alert" style="display: none;"></div>
+
+        <!-- Shown only while creating the sign-in with the one-time setup code -->
+        <div id="setup-code-group" class="form-group" style="display: none;">
+          <label for="setup-code-input" class="form-label">Setup code</label>
+          <input type="text" id="setup-code-input" class="form-input" placeholder="XXXX-XXXX-XXXX-XXXX" autocomplete="off" autocapitalize="characters" spellcheck="false">
+        </div>
 
         <div class="form-group">
           <label for="login-username" class="form-label">Username</label>
@@ -59,6 +65,8 @@
         <button type="submit" id="login-submit-btn" class="btn btn-primary login-btn" disabled>
           <span>Sign In to Studio</span>
         </button>
+
+        <button type="button" id="setup-toggle-btn" class="login-mode-link" style="display: none;">Have a setup code? Create a new sign-in</button>
       </form>
 
       <div class="login-footer">

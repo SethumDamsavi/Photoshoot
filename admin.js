@@ -54,6 +54,12 @@ const togglePasswordBtn = document.getElementById('toggle-password-btn');
 const loginErrorAlert = document.getElementById('login-error');
 const currentUserNameEl = document.getElementById('current-user-name');
 const logoutBtn = document.getElementById('logout-btn');
+const loginTitleEl = document.getElementById('login-title');
+const loginDescEl = document.getElementById('login-desc');
+const loginSubmitBtn = document.getElementById('login-submit-btn');
+const setupCodeGroup = document.getElementById('setup-code-group');
+const setupCodeInput = document.getElementById('setup-code-input');
+const setupToggleBtn = document.getElementById('setup-toggle-btn');
 
 // Stats
 const statProductsCount = document.getElementById('stat-products-count');
@@ -225,6 +231,76 @@ async function checkAuthSession() {
 function showLoginView() {
   loginSection.style.display = 'flex';
   dashboardSection.style.display = 'none';
+  if (loginMode !== 'signin') setLoginMode('signin');
+  refreshSignInStatus();
+}
+
+// ================= SIGN-IN FORM MODES =================
+// 'signin' is the usual form. 'setup' creates the sign-in with the one-time setup code: the
+// form switches to it by itself while no sign-in exists yet, and the link under the button
+// opens it when a new setup code has been issued (for example after a forgotten password).
+const LOGIN_COPY = {
+  signin: {
+    title: 'Studio Admin',
+    desc: "Sign in to curate, upload, and organize Raveesha's 21st birthday photo archive.",
+    button: 'Sign In to Studio',
+    username: 'Enter username',
+    password: 'Enter password',
+    passwordAutocomplete: 'current-password'
+  },
+  setup: {
+    title: 'Create your sign-in',
+    desc: "Enter your setup code, then choose the username and password you'll use from now on.",
+    button: 'Create Sign-in',
+    username: 'Choose a username',
+    password: 'Choose a password',
+    passwordAutocomplete: 'new-password'
+  }
+};
+let loginMode = 'signin';
+let loginBusy = false;
+let signInStatus = { needsSetup: false, setupAvailable: false };
+
+function setLoginMode(mode) {
+  loginMode = mode;
+  const copy = LOGIN_COPY[mode];
+  if (loginTitleEl) loginTitleEl.textContent = copy.title;
+  if (loginDescEl) loginDescEl.textContent = copy.desc;
+  if (setupCodeGroup) setupCodeGroup.style.display = mode === 'setup' ? '' : 'none';
+  if (setupCodeInput) setupCodeInput.required = mode === 'setup';
+  loginUsernameInput.placeholder = copy.username;
+  loginPasswordInput.placeholder = copy.password;
+  loginPasswordInput.setAttribute('autocomplete', copy.passwordAutocomplete);
+  if (loginSubmitBtn && !loginBusy) loginSubmitBtn.innerHTML = `<span>${copy.button}</span>`;
+  updateSetupToggle();
+}
+
+function updateSetupToggle() {
+  if (!setupToggleBtn) return;
+  if (loginMode === 'setup') {
+    // Before the first sign-in exists there is nothing to go back to
+    setupToggleBtn.textContent = 'Back to sign in';
+    setupToggleBtn.style.display = signInStatus.needsSetup ? 'none' : '';
+  } else {
+    setupToggleBtn.textContent = 'Have a setup code? Create a new sign-in';
+    setupToggleBtn.style.display = signInStatus.setupAvailable ? '' : 'none';
+  }
+}
+
+async function refreshSignInStatus() {
+  try {
+    const res = await fetch('/api/auth/status', { cache: 'no-store' });
+    if (!res.ok) return;
+    signInStatus = await res.json();
+  } catch (_) {
+    return;
+  }
+  if (signInStatus.needsSetup && loginMode !== 'setup') {
+    setLoginMode('setup');
+    if (setupCodeInput && !loginUsernameInput.value) setupCodeInput.focus();
+  } else {
+    updateSetupToggle();
+  }
 }
 
 function showDashboardView() {
@@ -251,26 +327,30 @@ function setupEventListeners() {
     });
   }
 
-  // Login Form Submission
+  // Login Form Submission (in setup mode it creates the sign-in instead)
   if (loginForm) {
     loginForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       loginErrorAlert.style.display = 'none';
+      const isSetup = loginMode === 'setup';
       const username = loginUsernameInput.value.trim();
       // Not trimmed: spaces can be part of a password
       const password = loginPasswordInput.value;
 
-      const submitBtn = document.getElementById('login-submit-btn');
+      const submitBtn = loginSubmitBtn;
+      loginBusy = true;
       if (submitBtn) {
         submitBtn.disabled = true;
-        submitBtn.innerHTML = '<span>Verifying...</span>';
+        submitBtn.innerHTML = `<span>${isSetup ? 'Creating...' : 'Verifying...'}</span>`;
       }
 
       try {
-        const res = await fetch('/api/auth/login', {
+        const res = await fetch(isSetup ? '/api/auth/setup' : '/api/auth/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username, password })
+          body: JSON.stringify(isSetup
+            ? { setupCode: setupCodeInput ? setupCodeInput.value : '', username, password }
+            : { username, password })
         });
         const data = await res.json();
 
@@ -279,10 +359,23 @@ function setupEventListeners() {
           currentUser = data.user;
           saveSession(authToken);
           loginPasswordInput.value = '';
-          showToast(`Welcome back, ${currentUser.name || currentUser.username}!`);
+          if (setupCodeInput) setupCodeInput.value = '';
+          if (isSetup) {
+            signInStatus = { needsSetup: false, setupAvailable: false };
+            setLoginMode('signin');
+          }
+          const name = currentUser.name || currentUser.username;
+          showToast(isSetup ? `Sign-in created. Welcome, ${name}!` : `Welcome back, ${name}!`);
           showDashboardView();
           loadDashboardData();
         } else {
+          if (data.needsSetup) {
+            signInStatus = { needsSetup: true, setupAvailable: true };
+            setLoginMode('setup');
+          } else if (data.alreadyUsed) {
+            signInStatus = { needsSetup: false, setupAvailable: false };
+            setLoginMode('signin');
+          }
           loginErrorAlert.textContent = data.error || 'Authentication failed. Please check credentials.';
           loginErrorAlert.style.display = 'block';
         }
@@ -290,12 +383,22 @@ function setupEventListeners() {
         loginErrorAlert.textContent = 'Server connection failed. Make sure backend is running.';
         loginErrorAlert.style.display = 'block';
       } finally {
+        loginBusy = false;
         if (submitBtn) {
           submitBtn.disabled = false;
-          submitBtn.innerHTML = '<span>Sign In to Studio</span>';
+          submitBtn.innerHTML = `<span>${LOGIN_COPY[loginMode].button}</span>`;
         }
       }
     });
+
+    if (setupToggleBtn) {
+      setupToggleBtn.addEventListener('click', () => {
+        loginErrorAlert.style.display = 'none';
+        setLoginMode(loginMode === 'setup' ? 'signin' : 'setup');
+        if (loginMode === 'setup' && setupCodeInput) setupCodeInput.focus();
+        else loginUsernameInput.focus();
+      });
+    }
 
     // The form is ready: the button starts disabled in admin.html until this point
     const readyBtn = document.getElementById('login-submit-btn');

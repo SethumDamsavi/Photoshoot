@@ -81,6 +81,6 @@ server.listen(PORT, () => {
   console.log(`\n✨ Server running at: http://localhost:${PORT}/`);
   console.log(`👑 Admin Dashboard at: http://localhost:${PORT}/admin`);
   if (!process.env.ADMIN_PASSWORD) {
-    console.log('🔒 Admin sign-in is off: put ADMIN_USERNAME and ADMIN_PASSWORD in .env.local (see .env.example).\n');
+    console.log('🔒 Admin sign-in: the account created on /admin with the setup code, or ADMIN_USERNAME and ADMIN_PASSWORD in .env.local (see .env.example).\n');
   }
 });
