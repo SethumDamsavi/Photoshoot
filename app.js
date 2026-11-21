@@ -42,8 +42,11 @@ function applyHeroSettings(settings) {
   if (!settings) return;
   siteSettings = { ...siteSettings, ...settings };
 
+  // The hero's first photo follows the cover set in Studio Admin. The cover bundled into the
+  // page is an old one, so it never replaces the photo index.html starts with.
   const heroImg = document.getElementById('profile-avatar-img');
-  if (heroImg && settings.heroImage) {
+  if (heroImg && settings.heroImage && settings.heroImage !== defaultSettings.heroImage &&
+      heroImg.getAttribute('src') !== settings.heroImage) {
     heroImg.src = settings.heroImage;
   }
 
@@ -117,6 +120,54 @@ async function fetchSettings() {
       if (cached) applyHeroSettings(JSON.parse(cached));
     } catch (_) {}
   }
+}
+
+// ================= SITE HEADER =================
+// Past the top of the page the name and the actions fade and only the nav capsule stays; the
+// capsule lights the link of the section in the middle of the screen.
+function setupSiteHeader() {
+  const header = document.getElementById('site-header');
+  if (!header) return;
+
+  const links = [...header.querySelectorAll('.nav-link[href^="#"]')];
+  const sections = links.map(link => document.querySelector(link.getAttribute('href'))).filter(Boolean);
+
+  // At the top of the page it is always Home (on a very tall screen the middle of the screen
+  // can already reach the gallery); further down, the last section whose top has passed the
+  // middle of the screen
+  let activeId = '';
+  const updateActive = () => {
+    let current = sections[0];
+    if (window.scrollY > 40) {
+      const middle = window.innerHeight * 0.45;
+      sections.forEach(section => {
+        if (section.getBoundingClientRect().top <= middle) current = section;
+      });
+    }
+    if (!current || current.id === activeId) return;
+    activeId = current.id;
+    links.forEach(link => {
+      const isCurrent = link.getAttribute('href') === `#${activeId}`;
+      link.classList.toggle('is-active', isCurrent);
+      if (isCurrent) link.setAttribute('aria-current', 'true');
+      else link.removeAttribute('aria-current');
+    });
+  };
+
+  let ticking = false;
+  const update = () => {
+    ticking = false;
+    header.classList.toggle('is-condensed', window.scrollY > 40);
+    if (sections.length) updateActive();
+  };
+  window.addEventListener('scroll', () => {
+    if (!ticking) {
+      ticking = true;
+      requestAnimationFrame(update);
+    }
+  }, { passive: true });
+  window.addEventListener('resize', update, { passive: true });
+  update();
 }
 
 // ================= PHOTO LOAD RETRIES =================
@@ -297,7 +348,6 @@ async function loadBackendData() {
     ]);
 
     setConnectionStatus('online', `Archive Live • ${products.length} Moments`);
-    showToast(`Loaded ${products.length} birthday moments from archive!`);
 
     const syncTimeEl = document.getElementById('sync-time-text');
     if (syncTimeEl) {
@@ -971,19 +1021,44 @@ function setupEventListeners() {
   const forceReloadBtn = document.getElementById('force-reload-btn');
   if (forceReloadBtn) forceReloadBtn.addEventListener('click', loadBackendData);
 
-  // Hero Cover Frame Lightbox Trigger
-  const heroCoverFrame = document.getElementById('hero-cover-frame');
-  if (heroCoverFrame) {
-    heroCoverFrame.addEventListener('click', () => {
-      openLightbox(0);
+  // Hero photos: each card opens its own photo full size, or the gallery while the photo list
+  // is still loading
+  document.querySelectorAll('.hero-card-photo').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const wanted = sitePath(btn.dataset.photo || '');
+      const match = products.find(p => p && p.published !== false && p.image === wanted);
+      if (match) {
+        openLightboxForPhotoId(match.id);
+      } else {
+        const gallery = document.getElementById('gallery-controls');
+        if (gallery) gallery.scrollIntoView({ behavior: 'smooth' });
+      }
     });
-    heroCoverFrame.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' || e.key === ' ') {
-        e.preventDefault();
-        openLightbox(0);
+  });
+
+  // Share the site: the phone's share sheet where there is one, otherwise copy the link
+  const shareSiteBtn = document.getElementById('nav-share-btn');
+  if (shareSiteBtn) {
+    shareSiteBtn.addEventListener('click', async () => {
+      const url = window.location.origin + window.location.pathname;
+      if (navigator.share) {
+        try {
+          await navigator.share({ title: document.title, text: "Photos from Raveesha's 21st birthday shoot", url });
+        } catch (_) {
+          // Closing the share sheet is not an error
+        }
+        return;
+      }
+      try {
+        await navigator.clipboard.writeText(url);
+        showToast('Link copied. Paste it anywhere to share the photos.');
+      } catch (_) {
+        showToast(`Share this link: ${url}`);
       }
     });
   }
+
+  setupSiteHeader();
 
   // Hero Real Pink Roses Card Lightbox Trigger
   const heroRosesCard = document.querySelector('.hero-roses-floating-card');

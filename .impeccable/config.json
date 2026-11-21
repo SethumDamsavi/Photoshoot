@@ -56,6 +56,12 @@
         ],
         "createdAt": "2026-11-08T16:51:50.988Z",
         "reason": "Claude: the hero's frosted plaque and Chapter 21 seal are overlays on the arch photo, the same caption-over-photo pattern as the gallery photo cards, not a card nested in a layout card"
+      },
+      {
+        "rule": "overused-font",
+        "value": "inter",
+        "createdAt": "2026-11-21T19:43:10.035Z",
+        "reason": "Pinned by the user's reference screenshot of the hero (2026-11-22); Claude identified the face as Inter Tight by side-by-side renders against it. The skill's 'brief wins' rule applies."
       }
     ]
   }

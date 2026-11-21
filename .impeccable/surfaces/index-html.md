@@ -2,25 +2,27 @@
 version: 1
 slug: "index-html"
 primary_target: "index.html"
-related_targets: []
+related_targets: ["style.css","app.js"]
 ---
 
-Scope: public gallery page (`index.html`, `site.css`, `app.js`, `motion.js`, `coverflow.js`). Visitor mode: Experience. Build path: code-led (no image generation available).
+Scope: public gallery page (`index.html`, `style.css`, `app.js`). Visitor mode: Experience. Build path: code-led (no image generation available); the user's reference screenshot of the hero (2026-11-22) is the critique reference.
 
-Audience and job: friends and family opening Raveesha's shared link, mostly on phones, to look through her 21st birthday photos, open them full-screen, favorite and share.
+Audience and job: friends and family opening Raveesha's shared link, mostly on phones, to look through her 21st birthday photos, open them full size, favourite and share.
 
-Constraints: keep every element ID Studio Admin and app.js sync rely on; keep `style.css` untouched for admin; pink and white identity pinned by the user; user picked 3D coverflow carousel, morphing ring cursor, modern editorial grid (2026-11-08). Kexsio reference links could not be opened; the user confirmed these choices instead.
+Constraints: keep the element IDs Studio Admin and app.js rely on (`profile-avatar-img` follows the admin cover photo, `hero-cover-frame`, `hero-title`, the section IDs the nav links to); the sections below the hero keep their pink and white identity; Studio Admin shares `style.css`. Wording confirmed by the user on 2026-11-22: site name "Raveesha's 21st" at the top left, headline "Salt air, soft light.", no studio words (no bookings, packages or contact).
+
+Unresolved: none.
 
 ## Direction contract
 
-THESIS: The site is Raveesha's "Chapter 21" birthday issue: a pink-and-white fashion-magazine special edition where her photos lead and the type and motion move around them. It refuses the centred-headline-over-card-row template and the old scrapbook clutter (washi tape, pins, watercolour wash, typewriter quotes).
+THESIS: The opening is a dark gallery wall for the shoot by the sea: one huge, quiet headline and four of her photos hung in a staggered row, so the photos are the first thing anyone remembers. It refuses the full-bleed cover with text over a scrim that the page had before.
 
-OWN-WORLD: Blush ground #f9dde6 owning whole sections, porcelain white #fff8fa panels, berry ink #3b0f24, peony #d23f6c for actions, one berry-drenched stage for the coverflow, a peony marquee band. Display: Bodoni Moda (fashion masthead Didone) with italic turns; labels and UI: Jost (cover-line geometric sans, tracked caps). A giant outlined "21" is the issue's mark. Watercolour rose sprays are the only ornament. Photos at 20px radius, pill controls, authored 1.75-stroke SVG icons.
+OWN-WORLD: Near-black ground #0d0e10 owning the whole opening band, warm off-white ink #f3f1ec, warm grey #a9a7a2 for the intro, pale sea-blue #cfe3ec for the one italic word and the dot. Inter Tight 700 at display size with very tight tracking against Cormorant Garamond italic for "light."; Inter Tight for every label. Pills everywhere: a dark #1b1c1e nav capsule with an off-white active pill, hairline #2c2d30 outlines, an off-white primary pill carrying a dark circle with a drawn arrow. Photos in 30px-radius cards with frosted dark caption chips.
 
-STORY: The visitor sees her cover portrait and name at once, scrolls into an editorial grid of her photos, filters albums, opens any photo full-screen, reads her note, flips through highlights on the coverflow, and favorites or shares a moment.
+STORY: The visitor reads whose shoot this is, takes in the four photos, opens any of them full size, or follows "View gallery" into the photo grid, "Her story" to her note, and the nav to the reel. They can share the site from the top right.
 
-FIRST VIEWPORT: Desktop: left 55%, "Raveesha's" and an italic "21st Birthday Shoot" at masthead scale, the subtitle, the curator statement, primary action "Explore the photos" and a secondary "Her story". Right 45%: the arch-topped cover portrait with a giant outlined "21" behind it, a rose spray at its foot, a slowly rotating circular "Chapter 21" seal on its edge, the plaque line beneath. Mobile: name, then portrait, then actions.
+FIRST VIEWPORT: Desktop, 1440 wide: name left, nav capsule centred, Share right, all on one line at the top. Below, left: the dot line "Birthday shoot by the sea", then "Salt air, / soft light." at about 137px across two lines. Right, level with the headline's last line: the two-line intro, then "View gallery" (primary) and "Her story". Under both, four bottom-aligned photo cards across the width, wide first, the second and fourth 48px taller, each numbered with its name; the fourth carries a round arrow to the gallery. Phones: name and Share, the nav capsule below, the headline at about a fifth of the screen width, the intro and both buttons, then the four cards as a swipeable row.
 
-FORM: User-pinned direction (no roll): modern pink and white, 3D coverflow, morphing ring cursor, editorial grid. Signature interaction: the berry-stage coverflow, dragged with inertia while the cursor becomes "Drag". Focal moment: the cover opening, a peony curtain with "21" lifting to unmask the portrait. Motion grammar: expo-out cubic-bezier(0.16,1,0.3,1); clip-path unmasking for photos; line-rise for headings. seed: none (unavailable)
+FORM: user-pinned reference (no roll): the hero follows the user's screenshot. Signature interaction: the photo row, each card opening its photo in the lightbox, swipeable on phones; the nav capsule stays at the top while scrolling and lights the section in view. Motion grammar: expo-out cubic-bezier(0.16,1,0.3,1); headline words rise out of their lines, the cards lift in left to right. seed: none (unavailable)
 
 FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance
