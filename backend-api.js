@@ -160,16 +160,15 @@ async function storeUploadedImage(buffer, mimeType, safeFilename, dataUrl) {
 //  1. The environment variables ADMIN_USERNAME and ADMIN_PASSWORD (Vercel → Settings →
 //     Environment Variables, or .env.local on this computer). When ADMIN_PASSWORD is set,
 //     it is the only way in.
-//  2. Otherwise, an account the owner creates once on the /admin page with a one-time
-//     setup code. It is saved in the site's shared storage (Redis on Vercel, the git-ignored
-//     .admin-account.json on this computer) with the password scrypt-hashed.
-// Only the SHA-256 of the setup code is in this file; the code itself was given to the
-// owner privately. Each code works once. To let the owner choose a new username and
-// password (for example after forgetting it), put the hash of a new code here.
+//  2. Otherwise, an account created on the /admin page. While none exists, the page asks
+//     for a username and password, and the first one saved becomes the sign-in (the owner
+//     chose this over a setup code). After that, setup is closed. It is saved in the site's
+//     shared storage (Redis on Vercel, the git-ignored .admin-account.json on this computer)
+//     with the password scrypt-hashed. To start over (for example after a forgotten
+//     password), delete the Redis key birthday:admin-account and /admin asks again.
 // Passwords may be any length (the owner's choice).
 const ENV_USERNAME = (process.env.ADMIN_USERNAME || 'admin').trim() || 'admin';
 const ENV_PASSWORD = process.env.ADMIN_PASSWORD || '';
-const SETUP_CODE_SHA256 = 'c8df0446b961a5f17a95230232f9f9bf4cdc788f6159e0dd11c79bfcc919fbaa';
 const ACCOUNT_KEY = REDIS_PREFIX + 'admin-account';
 const ACCOUNT_FILE = path.resolve(process.cwd(), '.admin-account.json');
 const SCRYPT_PARAMS = { N: 16384, r: 8, p: 1 };
@@ -194,13 +193,6 @@ function hashPassword(password, salt, params = SCRYPT_PARAMS) {
   });
 }
 
-// The setup code is compared without its dashes, spaces or letter case
-function setupCodeMatches(code) {
-  const typed = String(code || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
-  const digest = crypto.createHash('sha256').update(`admin-setup|${typed}`).digest('hex');
-  return sameSecret(digest, SETUP_CODE_SHA256);
-}
-
 async function readAccount() {
   let account = null;
   try {
@@ -219,21 +211,24 @@ async function readAccount() {
   return valid ? account : null;
 }
 
-async function saveAccount(account) {
+// Saves the account only if none exists yet, in one step, so two people submitting the
+// setup form at the same moment can't both win. Returns false when one already exists.
+async function createAccount(account) {
   if (USE_REDIS) {
-    await redisCommand(['SET', ACCOUNT_KEY, JSON.stringify(account)]);
-    return;
+    return (await redisCommand(['SET', ACCOUNT_KEY, JSON.stringify(account), 'NX'])) === 'OK';
   }
   try {
-    fs.writeFileSync(ACCOUNT_FILE, JSON.stringify(account, null, 2), 'utf-8');
-  } catch (_) {
+    fs.writeFileSync(ACCOUNT_FILE, JSON.stringify(account, null, 2), { encoding: 'utf-8', flag: 'wx' });
+    return true;
+  } catch (err) {
+    if (err.code === 'EEXIST') return false;
     throw new Error('Storage is read-only. Connect an Upstash Redis store to this Vercel project so the sign-in can be saved.');
   }
 }
 
 // Sessions are signed tokens, so every serverless instance accepts them without shared memory.
 // The signing key mixes a private secret with the current sign-in, so a new password signs
-// everyone out. "v2" (environment variables) and "v3" (account made with a setup code)
+// everyone out. "v2" (environment variables) and "v3" (account made on /admin)
 // retired every session issued before sign-in moved out of the repository.
 const SESSION_TTL_MS = 8 * 60 * 60 * 1000;
 const TOKEN_SECRET_BASE = process.env.ADMIN_TOKEN_SECRET || REDIS_TOKEN || process.env.BLOB_READ_WRITE_TOKEN || 'birthday-shoot';
@@ -389,38 +384,22 @@ export async function handleApiRequest(req, res) {
     return true;
   };
 
-  // 1. AUTH: Is sign-in ready, or does the owner still need to create it with the setup code?
+  // 1. AUTH: Is sign-in ready, or does the owner still need to create it?
   if (pathname === '/api/auth/status' && method === 'GET') {
     const signIn = await currentSignIn();
-    const setupAvailable = signIn.mode === 'none' ||
-      (signIn.mode === 'account' && signIn.account.setupCode !== SETUP_CODE_SHA256);
-    return sendJSON(200, { needsSetup: signIn.mode === 'none', setupAvailable });
+    return sendJSON(200, { needsSetup: signIn.mode === 'none' });
   }
 
-  // 1.1 AUTH: Create the admin sign-in with the one-time setup code, and sign straight in
+  // 1.1 AUTH: Create the admin sign-in while none exists, and sign straight in
   if (pathname === '/api/auth/setup' && method === 'POST') {
-    if (ENV_PASSWORD) {
-      return sendJSON(409, {
-        success: false,
-        error: "This site's sign-in is set in its environment variables, so it can't be changed here."
-      });
-    }
+    const alreadySetUp = () => sendJSON(409, {
+      success: false,
+      alreadyUsed: true,
+      error: 'A sign-in already exists for this site. Sign in with it.'
+    });
+    if (ENV_PASSWORD || await readAccount()) return alreadySetUp();
 
-    const { setupCode, username, password } = await parseBody(req);
-    if (!setupCodeMatches(setupCode)) {
-      await pause(FAILED_SIGN_IN_DELAY_MS);
-      return sendJSON(401, { success: false, error: "That setup code isn't right. Check it and try again." });
-    }
-
-    const existing = await readAccount();
-    if (existing && existing.setupCode === SETUP_CODE_SHA256) {
-      return sendJSON(409, {
-        success: false,
-        alreadyUsed: true,
-        error: 'This setup code has already been used. Sign in with the username and password you chose.'
-      });
-    }
-
+    const { username, password } = await parseBody(req);
     const name = typeof username === 'string' ? username.trim() : '';
     if (!name || name.length > MAX_USERNAME_LENGTH) {
       return sendJSON(400, { success: false, error: `Choose a username (up to ${MAX_USERNAME_LENGTH} characters).` });
@@ -435,10 +414,9 @@ export async function handleApiRequest(req, res) {
       salt: salt.toString('base64'),
       hash: await hashPassword(password, salt),
       params: SCRYPT_PARAMS,
-      setupCode: SETUP_CODE_SHA256,
       createdAt: new Date().toISOString()
     };
-    await saveAccount(account);
+    if (!(await createAccount(account))) return alreadySetUp();
 
     const signIn = signInFromAccount(account);
     const user = sessionUser(signIn);
@@ -452,7 +430,7 @@ export async function handleApiRequest(req, res) {
       return sendJSON(503, {
         success: false,
         needsSetup: true,
-        error: "Sign-in isn't set up yet. Enter your setup code to create it."
+        error: "Sign-in isn't set up yet. Choose a username and password to create it."
       });
     }
 

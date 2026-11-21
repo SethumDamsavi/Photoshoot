@@ -57,9 +57,6 @@ const logoutBtn = document.getElementById('logout-btn');
 const loginTitleEl = document.getElementById('login-title');
 const loginDescEl = document.getElementById('login-desc');
 const loginSubmitBtn = document.getElementById('login-submit-btn');
-const setupCodeGroup = document.getElementById('setup-code-group');
-const setupCodeInput = document.getElementById('setup-code-input');
-const setupToggleBtn = document.getElementById('setup-toggle-btn');
 
 // Stats
 const statProductsCount = document.getElementById('stat-products-count');
@@ -236,9 +233,8 @@ function showLoginView() {
 }
 
 // ================= SIGN-IN FORM MODES =================
-// 'signin' is the usual form. 'setup' creates the sign-in with the one-time setup code: the
-// form switches to it by itself while no sign-in exists yet, and the link under the button
-// opens it when a new setup code has been issued (for example after a forgotten password).
+// 'signin' is the usual form. 'setup' creates the sign-in: the form switches to it by itself
+// while no sign-in exists yet, and back once one does.
 const LOGIN_COPY = {
   signin: {
     title: 'Studio Admin',
@@ -250,7 +246,7 @@ const LOGIN_COPY = {
   },
   setup: {
     title: 'Create your sign-in',
-    desc: "Enter your setup code, then choose the username and password you'll use from now on.",
+    desc: "Choose the username and password you'll use to sign in from now on.",
     button: 'Create Sign-in',
     username: 'Choose a username',
     password: 'Choose a password',
@@ -259,48 +255,28 @@ const LOGIN_COPY = {
 };
 let loginMode = 'signin';
 let loginBusy = false;
-let signInStatus = { needsSetup: false, setupAvailable: false };
-
 function setLoginMode(mode) {
   loginMode = mode;
   const copy = LOGIN_COPY[mode];
   if (loginTitleEl) loginTitleEl.textContent = copy.title;
   if (loginDescEl) loginDescEl.textContent = copy.desc;
-  if (setupCodeGroup) setupCodeGroup.style.display = mode === 'setup' ? '' : 'none';
-  if (setupCodeInput) setupCodeInput.required = mode === 'setup';
   loginUsernameInput.placeholder = copy.username;
   loginPasswordInput.placeholder = copy.password;
   loginPasswordInput.setAttribute('autocomplete', copy.passwordAutocomplete);
   if (loginSubmitBtn && !loginBusy) loginSubmitBtn.innerHTML = `<span>${copy.button}</span>`;
-  updateSetupToggle();
-}
-
-function updateSetupToggle() {
-  if (!setupToggleBtn) return;
-  if (loginMode === 'setup') {
-    // Before the first sign-in exists there is nothing to go back to
-    setupToggleBtn.textContent = 'Back to sign in';
-    setupToggleBtn.style.display = signInStatus.needsSetup ? 'none' : '';
-  } else {
-    setupToggleBtn.textContent = 'Have a setup code? Create a new sign-in';
-    setupToggleBtn.style.display = signInStatus.setupAvailable ? '' : 'none';
-  }
 }
 
 async function refreshSignInStatus() {
+  let status;
   try {
     const res = await fetch('/api/auth/status', { cache: 'no-store' });
     if (!res.ok) return;
-    signInStatus = await res.json();
+    status = await res.json();
   } catch (_) {
     return;
   }
-  if (signInStatus.needsSetup && loginMode !== 'setup') {
-    setLoginMode('setup');
-    if (setupCodeInput && !loginUsernameInput.value) setupCodeInput.focus();
-  } else {
-    updateSetupToggle();
-  }
+  const wanted = status.needsSetup ? 'setup' : 'signin';
+  if (loginMode !== wanted) setLoginMode(wanted);
 }
 
 function showDashboardView() {
@@ -348,9 +324,7 @@ function setupEventListeners() {
         const res = await fetch(isSetup ? '/api/auth/setup' : '/api/auth/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(isSetup
-            ? { setupCode: setupCodeInput ? setupCodeInput.value : '', username, password }
-            : { username, password })
+          body: JSON.stringify({ username, password })
         });
         const data = await res.json();
 
@@ -359,23 +333,14 @@ function setupEventListeners() {
           currentUser = data.user;
           saveSession(authToken);
           loginPasswordInput.value = '';
-          if (setupCodeInput) setupCodeInput.value = '';
-          if (isSetup) {
-            signInStatus = { needsSetup: false, setupAvailable: false };
-            setLoginMode('signin');
-          }
+          if (isSetup) setLoginMode('signin');
           const name = currentUser.name || currentUser.username;
           showToast(isSetup ? `Sign-in created. Welcome, ${name}!` : `Welcome back, ${name}!`);
           showDashboardView();
           loadDashboardData();
         } else {
-          if (data.needsSetup) {
-            signInStatus = { needsSetup: true, setupAvailable: true };
-            setLoginMode('setup');
-          } else if (data.alreadyUsed) {
-            signInStatus = { needsSetup: false, setupAvailable: false };
-            setLoginMode('signin');
-          }
+          if (data.needsSetup) setLoginMode('setup');
+          else if (data.alreadyUsed) setLoginMode('signin');
           loginErrorAlert.textContent = data.error || 'Authentication failed. Please check credentials.';
           loginErrorAlert.style.display = 'block';
         }
@@ -390,15 +355,6 @@ function setupEventListeners() {
         }
       }
     });
-
-    if (setupToggleBtn) {
-      setupToggleBtn.addEventListener('click', () => {
-        loginErrorAlert.style.display = 'none';
-        setLoginMode(loginMode === 'setup' ? 'signin' : 'setup');
-        if (loginMode === 'setup' && setupCodeInput) setupCodeInput.focus();
-        else loginUsernameInput.focus();
-      });
-    }
 
     // The form is ready: the button starts disabled in admin.html until this point
     const readyBtn = document.getElementById('login-submit-btn');

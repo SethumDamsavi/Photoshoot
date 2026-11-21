@@ -38,12 +38,6 @@
       <form id="login-form" class="login-form" method="post">
         <div id="login-error" class="login-error-alert" style="display: none;"></div>
 
-        <!-- Shown only while creating the sign-in with the one-time setup code -->
-        <div id="setup-code-group" class="form-group" style="display: none;">
-          <label for="setup-code-input" class="form-label">Setup code</label>
-          <input type="text" id="setup-code-input" class="form-input" placeholder="XXXX-XXXX-XXXX-XXXX" autocomplete="off" autocapitalize="characters" spellcheck="false">
-        </div>
-
         <div class="form-group">
           <label for="login-username" class="form-label">Username</label>
           <input type="text" id="login-username" class="form-input" placeholder="Enter username" autocomplete="username" required autofocus>
@@ -65,8 +59,6 @@
         <button type="submit" id="login-submit-btn" class="btn btn-primary login-btn" disabled>
           <span>Sign In to Studio</span>
         </button>
-
-        <button type="button" id="setup-toggle-btn" class="login-mode-link" style="display: none;">Have a setup code? Create a new sign-in</button>
       </form>
 
       <div class="login-footer">
